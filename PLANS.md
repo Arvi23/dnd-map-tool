@@ -23,7 +23,7 @@ This is a **lore and immersion tool** for tabletop RPG dungeon masters. The prim
 ## Repository Layout
 
 ```
-editor.html     — The entire DM editor (~2400 lines, single file)
+editor.html     — The entire DM editor (~2800 lines, single file)
 README.md       — User-facing documentation
 PLANS.md        — This file (agent handoff)
 ```
@@ -112,7 +112,10 @@ All region kinds share this base shape. Fields that don't apply to a kind are st
 
   // NPC and building arrays (NOT on labels):
   npcs: NPC[],
-  buildings: Building[]
+  buildings: Building[],
+
+  // status flags (NOT on labels):
+  statusTags: string[]  // subset of STATUS_TAG_NAMES: 'Quest Active','Visited','Cleared','Hostile','Rumoured'
 }
 ```
 
@@ -150,11 +153,22 @@ All region kinds share this base shape. Fields that don't apply to a kind are st
 | `compressImage(b64, maxDim)` | Canvas-resize image to maxDim, returns Promise<b64> |
 | `generatePlayerExport()` | Returns the complete world-map.html as a string |
 | `appendLabel(cx,cy,r,W)` | Add an SVG text label above a shape (polygons and pins only — NOT roads) |
+| `renderStatusDots(cx,cy,r,W)` | Render colored dot indicators below a region label on the SVG |
 | `buildPinPalette()` | Populate the drag palette in the sidebar |
 | `buildTypeFilter()` | Build the type-chip filter row in sidebar |
 | `setTool(tool)` | Activate a drawing tool ('polygon','label',null) |
 | `closePolygon()` | Finish a polygon being drawn |
 | `closeRoad()` | Finish a road being drawn (handles continuation too) |
+| `openLoreBrowser()` | Open the full-screen lore browser overlay (sets lbSelectedId if needed) |
+| `closeLoreBrowser()` | Close the lore browser overlay |
+| `renderLbList()` | Rebuild the sidebar list in the lore browser |
+| `renderLbMain()` | Rebuild the main content area of the lore browser for the selected region; wires all inline-edit events |
+| `lbMetaHTML(r,isLabel)` | Returns header HTML for lore browser (name input, tag badge, chips, status chips) |
+| `lbEntityHTML(entity,entityType)` | Returns collapsible entity card HTML with editable name/description fields |
+| `autoResize(el)` | Set a textarea's height to fit its content (call on load and oninput) |
+| `debounceLb(regionId,field,value)` | 350ms debounced write of a region field back to state |
+| `lbEntityChanged(...)` | Commit an entity field edit to state and sync visible DOM |
+| `debounceLbEntity(...)` | 350ms debounced version of lbEntityChanged |
 
 ---
 
@@ -162,7 +176,7 @@ All region kinds share this base shape. Fields that don't apply to a kind are st
 
 ### Polygon (`P` key)
 - Click to place vertices. Near first vertex, snap ring appears (gold circle). Double-click or Enter to close. Right-click cancels.
-- Uses `mapSvg.addEventListener('click')` — note: roads do NOT use click (see below).
+- **Point placement uses `mouseup` not `click`** — same reason as roads (see below). The `click` handler on `mapSvg` explicitly gates out `activeTool==='polygon'`. The `mouseup` handler uses the same 10px drift threshold (`dx²+dy² < 100`).
 - `snapClose` flag set in `updateDrawingCursor()`.
 
 ### Road (drag from palette)
@@ -191,7 +205,7 @@ All `mousemove` and `mouseup` are on **document** (not mapContainer), so fast mo
 - Button 1 or 2: starts pan (`isDragging`)
 - Button 2 during road drawing: finishes road
 - Button 2 during polygon drawing: cancels
-- Button 2 when something selected: deselects then pans
+- Button 2: pans (no longer deselects — use Esc to deselect)
 
 Special drag states (checked in order in `mousemove`):
 1. `partyDrag` — moving party marker (no Ctrl needed)
@@ -259,7 +273,7 @@ Player export has its own completely separate CSS inside the template literal.
 
 3. **Party marker is not a region** — It lives in `state.partyMarker`, not `state.regions`. It does not appear in the sidebar, undo stack, type filter, or JSON export regions array. It IS included in the player export JSON as a separate top-level key. Don't try to select it with `selectRegion()`.
 
-4. **Road click vs. polygon click** — Polygon uses `mapSvg.addEventListener('click')`. Road uses `document.addEventListener('mouseup')` with a drift check. Do not add road point placement back to the click handler — it won't work reliably.
+4. **Road and polygon both use `mouseup`** — Both use `document.addEventListener('mouseup')` with a 10px drift check (`dx²+dy² < 100`). The `mapSvg` click handler explicitly gates out both `'road'` and `'polygon'`. Do not move either back to the click handler — it suppresses events when `renderSvg()` runs during `mousemove`.
 
 5. **Labels have `tag: 'Label'`** which is not in the `TYPES` array and not in the `ep-tag` dropdown. The Type field is hidden for labels. Do not try to show it — setting `ep-tag.value = 'Label'` silently fails and shows the wrong value.
 
@@ -272,6 +286,25 @@ Player export has its own completely separate CSS inside the template literal.
 9. **`migrateRegions()` must be updated** — Every time a new field is added to a region object, add a default for it in `migrateRegions()`. Otherwise old saves will have `undefined` for that field and cause subtle bugs.
 
 10. **`innerHTML` on SVG elements** — The pin icon shapes use `iconG.innerHTML = PIN_ICONS[r.tag]`. This works in all modern browsers for SVG elements. SVG elements parse their innerHTML as SVG XML, so all SVG elements (`rect`, `polygon`, `path`, etc.) are created correctly.
+
+---
+
+## Completed Features
+
+### Resizable edit panel
+The right-hand edit panel has a drag handle on its left edge. Dragging it resizes the panel between 280px and 700px. Implemented via a `#resize-handle` div (4px wide, `cursor:col-resize`), `mousedown` on it sets `resizing=true` and disables the width CSS transition so dragging is not laggy. The panel width is updated via `document.documentElement.style.setProperty('--edit-w', newW+'px')`.
+
+### Full-screen Lore Browser (`←` / `B` key)
+Toggled by the `←` button in the edit panel tab bar, the `📖` button in the toolbar, or the `B` key. Opens a fixed overlay covering the full viewport. Left sidebar shows a searchable, type-filterable list of all regions. Main area shows the selected region's cover image, metadata, status chips, public lore, DM notes, and collapsible NPC/building cards.
+
+**All fields are inline-editable directly in the lore browser** — name, lore, DM notes, entity names and descriptions auto-save with a 350ms debounce back to `state`, the sidebar, and the SVG. Textareas auto-resize to fit content. DM notes are always shown (even when empty) so DMs can type directly without going back to the edit panel.
+
+### Status tags (`r.statusTags`)
+Five colored flags per region: *Quest Active* (gold), *Visited* (green), *Cleared* (grey), *Hostile* (red), *Rumoured* (purple).
+- Toggle chips in the edit panel (Info tab, below fog-of-war toggle). Hidden for labels.
+- Colored dot indicators rendered below region name labels in the SVG (`renderStatusDots()`).
+- Colored chips shown in the lore browser header.
+- Exported to `world-map.html` and shown as chips in the player popup header.
 
 ---
 
@@ -291,13 +324,7 @@ Architecture sketch:
 - Player export generates a multi-page HTML with JS navigation between embedded maps.
 - Editor gets a "Maps" panel to switch between maps and a "Link to map" field in the pin editor.
 
-**2. Status tags per location**
-Quick visual flags: *Quest Active*, *Party Visited*, *Cleared*, *Rumoured*, *Hostile*.
-- Stored as `r.statusTags: string[]` on each region.
-- In the editor: small colored chips in the edit panel; small icon overlaid on the region in the SVG.
-- In the player export: shown in the popup header. Could replace fog of war for "rumoured" locations (name visible, lore hidden).
-
-**3. Session tracker**
+**2. Session tracker**
 Each region can record the session number when it was revealed.
 - `r.revealedSession: number|null`
 - Filter in the editor: "Show only regions revealed by session N" → temporarily sets fog of war for everything revealed after N.

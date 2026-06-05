@@ -74,8 +74,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 
 /* COVER IMAGE */
 .cover-wrap{margin-bottom:0}
-.cover-preview{width:100%;height:120px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden}
-.cover-preview img{width:100%;height:100%;object-fit:cover;display:none}
+.cover-preview{width:100%;aspect-ratio:4/3;max-height:260px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden}
+.cover-preview img{width:100%;height:100%;object-fit:cover;object-position:center;display:none}
 .cover-preview .cover-placeholder{color:var(--text-dim);font-size:12px;pointer-events:none}
 .cover-preview:hover .cover-placeholder{color:var(--accent)}
 .cover-actions{display:flex;gap:4px;padding:4px 8px;background:var(--surface);border-bottom:1px solid var(--border)}
@@ -196,6 +196,81 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 #scratchpad textarea{flex:1;resize:none;min-height:200px;background:transparent;border:none;padding:10px 12px;color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:12px;line-height:1.55}
 #scratchpad textarea:focus{outline:none}
 #scratchpad textarea::placeholder{color:var(--text-dim)}
+
+/* RESIZE HANDLE */
+#resize-handle{position:absolute;left:0;top:0;bottom:0;width:4px;cursor:col-resize;z-index:10;transition:background .15s}
+#resize-handle:hover,#resize-handle.dragging{background:var(--accent)}
+#edit-panel{position:relative}
+
+/* LORE BROWSER */
+#lore-browser{position:fixed;inset:0;background:var(--bg);z-index:350;display:none;flex-direction:row}
+#lore-browser.open{display:flex}
+#lb-sidebar{width:260px;min-width:260px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#lb-sidebar-header{padding:10px 10px 6px}
+#lb-sidebar-header input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;color:var(--text);font-size:12px}
+#lb-sidebar-header input::placeholder{color:var(--text-dim)}
+#lb-type-filter{display:flex;flex-wrap:wrap;gap:3px;padding:4px 10px 6px;border-bottom:1px solid var(--border)}
+#lb-region-list{flex:1;overflow-y:auto;padding:4px}
+.lb-region-item{padding:7px 8px;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.lb-region-item:hover{background:var(--surface)}
+.lb-region-item.active{background:rgba(201,168,76,.15);outline:1px solid var(--accent)}
+#lb-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#lb-topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;height:48px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+#lb-topbar-title{font-size:14px;color:var(--accent);letter-spacing:.04em}
+#lb-content{flex:1;overflow-y:auto}
+#lb-empty{display:flex;align-items:center;justify-content:center;height:300px;color:var(--text-dim);font-size:13px}
+.lb-hero{display:flex;border-bottom:1px solid var(--border)}
+.lb-hero-img{width:300px;min-width:300px;height:300px;overflow:hidden;flex-shrink:0}
+.lb-hero-img img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
+.lb-hero-meta{flex:1;padding:22px 26px;display:flex;flex-direction:column;gap:10px;justify-content:center}
+.lb-header-flat{padding:22px 26px 16px;border-bottom:1px solid var(--border)}
+.lb-name{font-size:26px;color:var(--accent);font-variant:small-caps;letter-spacing:.06em}
+.lb-chips{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px}
+.lb-chip{font-size:12px;color:var(--text-dim)}
+.lb-tag-badge{font-size:11px;color:var(--text-dim);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:2px 9px;display:inline-block;margin-top:4px}
+.lb-section{padding:18px 26px}
+.lb-section+.lb-section{padding-top:0}
+.lb-section-heading{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.lb-section-heading.dm{color:var(--dm-red);border-bottom-color:rgba(224,82,82,.25)}
+.lb-lore-text{font-size:14px;color:var(--text);line-height:1.8;white-space:pre-wrap}
+.lb-dm-box{background:rgba(224,82,82,.07);border:1px solid rgba(224,82,82,.2);border-radius:5px;padding:14px;font-size:13px;color:#ffaaaa;line-height:1.7;white-space:pre-wrap}
+.lb-entity-item{border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-bottom:6px;background:var(--surface)}
+.lb-entity-header{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer}
+.lb-entity-header:hover{background:rgba(255,255,255,.03)}
+.lb-entity-thumb{width:40px;height:40px;border-radius:4px;object-fit:cover;flex-shrink:0;background:var(--border);display:none}
+.lb-entity-thumb.has-img{display:block}
+.lb-entity-name{flex:1;font-size:13px;color:var(--text)}
+.lb-entity-chevron{font-size:10px;color:var(--text-dim);transition:.2s;flex-shrink:0}
+.lb-entity-item.open .lb-entity-chevron{transform:rotate(90deg)}
+.lb-entity-body{display:none;padding:12px 14px;border-top:1px solid var(--border)}
+.lb-entity-item.open .lb-entity-body{display:block}
+.lb-entity-full-img{width:100%;max-height:200px;object-fit:cover;border-radius:4px;margin-bottom:10px;display:none}
+.lb-entity-full-img.has-img{display:block}
+.lb-entity-desc{font-size:13px;color:var(--text-dim);line-height:1.65;white-space:pre-wrap}
+
+/* STATUS TAGS */
+.status-tags-row{display:flex;flex-wrap:wrap;gap:5px}
+.stag-btn{padding:3px 10px;border-radius:12px;border:1px solid var(--border);cursor:pointer;font-size:11px;color:var(--text-dim);background:transparent;transition:.15s;font-family:inherit}
+.stag-btn:hover{border-color:var(--text-dim);color:var(--text)}
+
+/* LORE BROWSER — EDITABLE FIELDS */
+.lb-edit-name{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--accent);font-variant:small-caps;letter-spacing:.06em;font-size:26px;width:100%;padding:2px 0;font-family:inherit;transition:border-color .2s;cursor:text;display:block}
+.lb-edit-name:hover{border-bottom-color:rgba(201,168,76,.3)}
+.lb-edit-name:focus{border-bottom-color:var(--accent);outline:none}
+.lb-edit-lore{background:transparent;border:1px solid transparent;border-radius:4px;color:var(--text);font-size:14px;line-height:1.8;width:100%;padding:6px;font-family:inherit;resize:none;overflow:hidden;transition:border-color .2s,background .2s;cursor:text;display:block}
+.lb-edit-lore:hover{border-color:var(--border);background:rgba(255,255,255,.015)}
+.lb-edit-lore:focus{border-color:var(--accent);background:rgba(255,255,255,.02);outline:none}
+.lb-edit-dm{background:rgba(224,82,82,.07);border:1px solid rgba(224,82,82,.15);border-radius:4px;color:#ffaaaa;font-size:13px;line-height:1.7;width:100%;padding:10px 12px;font-family:inherit;resize:none;overflow:hidden;transition:border-color .2s;display:block}
+.lb-edit-dm:hover{border-color:rgba(224,82,82,.4)}
+.lb-edit-dm:focus{border-color:var(--dm-red);outline:none}
+.lb-entity-input{background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-size:13px;width:100%;padding:2px 0 4px;font-family:inherit;transition:border-color .2s;display:block;margin-bottom:10px}
+.lb-entity-input:hover{border-bottom-color:var(--border)}
+.lb-entity-input:focus{border-bottom-color:var(--accent);outline:none}
+.lb-entity-desc-edit{background:transparent;border:1px solid transparent;border-radius:4px;color:var(--text-dim);font-size:13px;line-height:1.65;width:100%;padding:4px 6px;font-family:inherit;resize:none;overflow:hidden;transition:border-color .2s,background .2s;display:block}
+.lb-entity-desc-edit:hover{border-color:var(--border);background:rgba(255,255,255,.015)}
+.lb-entity-desc-edit:focus{border-color:var(--accent);background:rgba(255,255,255,.02);outline:none}
+.lb-field-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;display:block}
+.lb-status-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 </style>
 </head>
 <body>
@@ -218,6 +293,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
   <div style="flex:1"></div>
   <button class="btn btn-icon" id="btn-search" title="Search Lore (Ctrl+F)">🔍</button>
   <button class="btn btn-icon" id="btn-scratch" title="DM Scratchpad">📝</button>
+  <button class="btn btn-icon" id="btn-lore-browser" title="Lore Browser (B)">📖</button>
   <button class="btn btn-icon" id="btn-help" title="Keyboard Shortcuts (?)">?</button>
   <span id="status-msg" style="color:var(--text-dim);font-size:11px;margin-left:4px"></span>
 </div>
@@ -251,19 +327,20 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
   </div>
 
   <div id="edit-panel" class="hidden">
+    <div id="resize-handle"></div>
     <div id="edit-panel-inner">
       <div id="no-selection">Select a region or pin to edit it</div>
       <div id="edit-form" style="display:none">
 
         <!-- Cover image -->
         <div class="cover-wrap">
-          <div class="cover-preview" id="cover-preview" title="Click to upload cover image">
+          <div class="cover-preview" id="cover-preview" style="display:none">
             <img id="cover-img" alt="">
-            <span class="cover-placeholder">+ Cover Image</span>
           </div>
-          <div class="cover-actions" id="cover-actions" style="display:none">
-            <button class="btn sm" id="btn-cover-change">Change</button>
-            <button class="btn sm danger" id="btn-cover-remove">Remove</button>
+          <div class="cover-actions" id="cover-actions">
+            <button class="btn sm" id="btn-cover-add">+ Cover Image</button>
+            <button class="btn sm" id="btn-cover-change" style="display:none">Change</button>
+            <button class="btn sm danger" id="btn-cover-remove" style="display:none">Remove</button>
           </div>
           <input type="file" id="cover-file" accept="image/*" style="display:none">
         </div>
@@ -273,6 +350,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
           <button class="ep-tab active" data-tab="info">Info</button>
           <button class="ep-tab" data-tab="npcs">NPCs <span class="tab-count" id="npc-count">0</span></button>
           <button class="ep-tab" data-tab="buildings">Buildings <span class="tab-count" id="bld-count">0</span></button>
+          <button class="btn btn-icon" id="btn-ep-lore-browser" title="Open in Lore Browser (B)" style="margin-left:auto;border:none;border-radius:0;border-left:1px solid var(--border);flex-shrink:0;font-size:18px">←</button>
         </div>
 
         <!-- Info tab -->
@@ -295,6 +373,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
           <div class="fog-toggle" id="fog-toggle">
             <div class="knob"></div>
             <span class="fog-label">Explored (visible to players)</span>
+          </div>
+          <div class="field" id="ep-status-field">
+            <label>Status</label>
+            <div class="status-tags-row" id="ep-status-tags"></div>
           </div>
           <div class="field">
             <label>Fill Opacity <span class="opacity-val" id="ep-opacity-val">100%</span></label>
@@ -374,7 +456,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
       <tr><td>Enter</td><td>Close polygon / finish road</td></tr>
       <tr><td>Esc</td><td>Cancel drawing / deselect</td></tr>
       <tr><td>Double-click</td><td>Close polygon / finish road</td></tr>
-      <tr><td>Right-click (map)</td><td>Finish road · deselect · pan</td></tr>
+      <tr><td>Right-click (map)</td><td>Finish road · pan</td></tr>
       <tr><td colspan="2" class="shortcut-section">Editing</td></tr>
       <tr><td>Ctrl + drag shape</td><td>Move region or road</td></tr>
       <tr><td>Drag vertex handle</td><td>Move a polygon/road point</td></tr>
@@ -388,6 +470,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
       <tr><td>Ctrl+Y / Ctrl+Shift+Z</td><td>Redo</td></tr>
       <tr><td colspan="2" class="shortcut-section">Tools</td></tr>
       <tr><td>Ctrl+F</td><td>Search lore</td></tr>
+      <tr><td>B</td><td>Lore Browser</td></tr>
       <tr><td>?</td><td>Keyboard shortcuts</td></tr>
     </table>
   </div>
@@ -400,6 +483,24 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
     <button class="btn sm" id="scratch-close">✕</button>
   </div>
   <textarea id="scratch-text" placeholder="Quick notes, initiative order, reminders…"></textarea>
+</div>
+
+<!-- Lore Browser -->
+<div id="lore-browser">
+  <div id="lb-sidebar">
+    <div id="lb-sidebar-header">
+      <input type="text" id="lb-search" placeholder="Search locations…" autocomplete="off">
+    </div>
+    <div id="lb-type-filter"></div>
+    <div id="lb-region-list"></div>
+  </div>
+  <div id="lb-main">
+    <div id="lb-topbar">
+      <span id="lb-topbar-title">📖 Lore Browser</span>
+      <button class="btn" id="lb-close">← Back to Map</button>
+    </div>
+    <div id="lb-content"></div>
+  </div>
 </div>
 
 <div id="drop-overlay">Drop image here</div>
@@ -415,6 +516,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 // ============================================================
 const TYPES = ['City','Town','Village','Dungeon','Ruin','Wilderness','POI','Road','Water','Other'];
 const TYPE_COLORS = {City:'#c0392b',Town:'#e67e22',Village:'#f1c40f',Dungeon:'#8e44ad',Ruin:'#95a5a6',Wilderness:'#27ae60',POI:'#2980b9',Road:'#b7950b',Water:'#1a5276',Other:'#556070'};
+const STATUS_TAGS={'Quest Active':{color:'#f0b429'},'Visited':{color:'#52c467'},'Cleared':{color:'#7f8c8d'},'Hostile':{color:'#e74c3c'},'Rumoured':{color:'#9b59b6'}};
+const STATUS_TAG_NAMES=Object.keys(STATUS_TAGS);
 
 // SVG icon paths, 20x20 viewBox each
 const PIN_ICONS = {
@@ -538,6 +641,7 @@ function migrateRegions(){
     if(!('roadSize' in r)) r.roadSize=1;
     if(!('fontSize' in r)) r.fontSize=1;
     if(!('fontStyle' in r)) r.fontStyle='normal';
+    if(!r.statusTags) r.statusTags=[];
   });
 }
 
@@ -761,8 +865,6 @@ mapContainer.addEventListener('mousedown',e=>{
       drawing=[]; activeTool=null; mapContainer.style.cursor='default'; updateHint(); renderSvg();
       return;
     }
-    // Right-click on empty space: deselect (edit panel closes), then also pan
-    if(e.button===2 && selectedId) selectRegion(null);
     // Pan (middle or right)
     isDragging=true; dragStart={x:e.clientX,y:e.clientY,vx:viewport.x,vy:viewport.y};
   }
@@ -829,20 +931,24 @@ document.addEventListener('mouseup',e=>{
       saveState(); renderSvg();
       toolMousedown=null; return;
     }
-    // Road point placement — fired on mouseup so tiny mouse drift can't kill it
-    if(activeTool==='road' && toolMousedown && state.imageB64){
+    // Polygon & road point placement — fired on mouseup so tiny mouse drift can't kill it
+    if((activeTool==='polygon'||activeTool==='road') && toolMousedown && state.imageB64){
       const dx=e.clientX-toolMousedown.x, dy=e.clientY-toolMousedown.y;
       if(dx*dx+dy*dy < 100){ // within ~10px — counts as intentional click
         const rect=mapContainer.getBoundingClientRect();
         const {nx,ny}=screenToNorm(e.clientX-rect.left, e.clientY-rect.top);
-        const now=Date.now();
-        if(lastRoadClick && now-lastRoadClick < 280){
-          // Double-click: close road (don't add the second point)
-          lastRoadClick=null;
-          if(drawing.length>=1||continueRoadId) closeRoad();
+        if(activeTool==='polygon'){
+          if(drawing.length>=3&&snapClose){ closePolygon(); }
+          else { drawing.push({nx,ny}); renderSvg(); }
         } else {
-          drawing.push({nx,ny}); renderSvg();
-          lastRoadClick=now;
+          const now=Date.now();
+          if(lastRoadClick && now-lastRoadClick < 280){
+            lastRoadClick=null;
+            if(drawing.length>=1||continueRoadId) closeRoad();
+          } else {
+            drawing.push({nx,ny}); renderSvg();
+            lastRoadClick=now;
+          }
         }
       }
     }
@@ -868,7 +974,7 @@ function updateDrawingCursor(screen){
 // SVG — TOOLS & CLICKS
 // ============================================================
 mapSvg.addEventListener('click',e=>{
-  if(!activeTool||!state.imageB64||isDragging||activeTool==='road') return;
+  if(!activeTool||!state.imageB64||isDragging||activeTool==='road'||activeTool==='polygon') return;
   const rect=mapContainer.getBoundingClientRect();
   const {nx,ny}=screenToNorm(e.clientX-rect.left, e.clientY-rect.top);
   if(activeTool==='polygon'){
@@ -925,7 +1031,7 @@ function newRegion(kind, tag){
   const defaultName = kind==='pin'?t+' Pin':kind==='road'?'Road':kind==='label'?'Label':'Region';
   const ps = kind==='pin' ? (defaultPinSizes[t]??1) : 1;
   const rs = kind==='road' ? defaultRoadSize : 1;
-  return { id:'r'+(state.nextId++), kind, name:defaultName, tag:t, color:kind==='label'?'#e8d5a0':(TYPE_COLORS[t]||TYPE_COLORS.Other), publicLore:'', dmNotes:'', explored:true, coverImage:null, fillOpacity:1, pinSize:ps, roadSize:rs, fontSize:1, fontStyle:'normal', points:[], px:.5, py:.5, npcs:[], buildings:[] };
+  return { id:'r'+(state.nextId++), kind, name:defaultName, tag:t, color:kind==='label'?'#e8d5a0':(TYPE_COLORS[t]||TYPE_COLORS.Other), publicLore:'', dmNotes:'', explored:true, coverImage:null, fillOpacity:1, pinSize:ps, roadSize:rs, fontSize:1, fontStyle:'normal', points:[], px:.5, py:.5, npcs:[], buildings:[], statusTags:[] };
 }
 
 function setTool(tool){
@@ -1138,6 +1244,7 @@ function renderSvg(){
       const cx=r.points.reduce((s,[x])=>s+x,0)/r.points.length*W;
       const cy=r.points.reduce((s,[,y])=>s+y,0)/r.points.length*H;
       appendLabel(cx,cy,r,W);
+      renderStatusDots(cx,cy+Math.max(10,Math.min(15,W*0.011))+5,r,W);
 
       // Vertex handles (selected polygon only)
       if(isSel){
@@ -1230,6 +1337,7 @@ function renderSvg(){
       }
 
       appendLabel(px, py+pis*0.75, r, W);
+      renderStatusDots(px, py+pis*0.75+Math.max(10,Math.min(15,W*0.011))+5, r, W);
     }
 
     if(r.kind==='road'&&r.points.length>=2){
@@ -1483,6 +1591,22 @@ function appendLabel(cx,cy,r,W){
   }
 }
 
+function renderStatusDots(cx,cy,r,W){
+  if(!r.statusTags||!r.statusTags.length) return;
+  const dotR=Math.max(3,W*0.0025);
+  const gap=dotR*3;
+  const totalW=(r.statusTags.length-1)*gap;
+  r.statusTags.forEach((tag,i)=>{
+    const dot=makeSvgEl('circle');
+    dot.setAttribute('cx',cx-totalW/2+i*gap);
+    dot.setAttribute('cy',cy);
+    dot.setAttribute('r',dotR);
+    dot.setAttribute('fill',STATUS_TAGS[tag]?.color||'#888');
+    dot.setAttribute('pointer-events','none');
+    mapSvg.appendChild(dot);
+  });
+}
+
 // ============================================================
 // SELECTION & EDIT PANEL
 // ============================================================
@@ -1508,8 +1632,17 @@ function repopulateEditPanel(){
   const ci=document.getElementById('cover-img');
   const cp=document.getElementById('cover-preview');
   const ca=document.getElementById('cover-actions');
-  if(r.coverImage){ ci.src=r.coverImage; ci.style.display='block'; ca.style.display='flex'; }
-  else { ci.style.display='none'; ca.style.display='none'; }
+  if(r.coverImage){
+    ci.src=r.coverImage; ci.style.display='block'; cp.style.display='flex';
+    document.getElementById('btn-cover-add').style.display='none';
+    document.getElementById('btn-cover-change').style.display='';
+    document.getElementById('btn-cover-remove').style.display='';
+  } else {
+    ci.style.display='none'; cp.style.display='none';
+    document.getElementById('btn-cover-add').style.display='';
+    document.getElementById('btn-cover-change').style.display='none';
+    document.getElementById('btn-cover-remove').style.display='none';
+  }
   // info tab
   document.getElementById('ep-name').value=r.name;
   document.getElementById('ep-tag').value=r.tag;
@@ -1537,6 +1670,29 @@ function repopulateEditPanel(){
   // Font style and presets (labels only)
   document.getElementById('ep-fontstyle-field').style.display=isLabel?'block':'none';
   document.getElementById('ep-label-presets').style.display=isLabel?'block':'none';
+  // Status tags (hidden for labels)
+  const stField=document.getElementById('ep-status-field');
+  const stRow=document.getElementById('ep-status-tags');
+  stField.style.display=isLabel?'none':'';
+  if(!isLabel){
+    stRow.innerHTML='';
+    STATUS_TAG_NAMES.forEach(tag=>{
+      const col=STATUS_TAGS[tag].color;
+      const active=(r.statusTags||[]).includes(tag);
+      const btn=document.createElement('button');
+      btn.className='stag-btn'; btn.textContent=tag;
+      if(active){ btn.style.background=col+'33'; btn.style.borderColor=col; btn.style.color=col; }
+      btn.onclick=()=>{
+        snapshot();
+        if(!r.statusTags) r.statusTags=[];
+        const idx=r.statusTags.indexOf(tag);
+        if(idx>=0) r.statusTags.splice(idx,1); else r.statusTags.push(tag);
+        saveState(); renderSvg(); repopulateEditPanel();
+        if(document.getElementById('lore-browser').classList.contains('open')) renderLbMain();
+      };
+      stRow.appendChild(btn);
+    });
+  }
   if(isLabel){
     const cur=r.fontStyle||'normal';
     document.querySelectorAll('.fs-btn').forEach(b=>b.classList.toggle('active',b.dataset.style===cur));
@@ -1666,6 +1822,7 @@ document.getElementById('btn-delete-region').onclick=()=>{
 
 // Cover image
 document.getElementById('cover-preview').onclick=()=>document.getElementById('cover-file').click();
+document.getElementById('btn-cover-add').onclick=()=>document.getElementById('cover-file').click();
 document.getElementById('btn-cover-change').onclick=e=>{ e.stopPropagation(); document.getElementById('cover-file').click(); };
 document.getElementById('btn-cover-remove').onclick=e=>{
   e.stopPropagation();
@@ -1936,7 +2093,7 @@ document.addEventListener('keydown',e=>{
   const inInput=['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
   if(e.key==='Escape'){
     // Close modals first before doing anything else
-    for(const id of ['search-modal','shortcuts-modal']){
+    for(const id of ['lore-browser','search-modal','shortcuts-modal']){
       const el=document.getElementById(id);
       if(el?.classList.contains('open')){ el.classList.remove('open'); return; }
     }
@@ -1955,6 +2112,7 @@ document.addEventListener('keydown',e=>{
     }
     if(e.key==='p'||e.key==='P'){ setTool('polygon'); return; }
     if(e.key==='l'||e.key==='L'){ setTool('label'); return; }
+    if(e.key==='b'||e.key==='B'){ toggleLoreBrowser(); return; }
     if(e.key==='?'){ toggleShortcuts(); return; }
   }
   if(e.ctrlKey&&e.key==='f'){ e.preventDefault(); openSearch(); }
@@ -2053,6 +2211,7 @@ function generatePlayerExport(){
     points:r.points, px:r.px, py:r.py,
     npcs:(r.npcs||[]).map(n=>({id:n.id,name:n.name,description:n.description,image:n.image||null})),
     buildings:(r.buildings||[]).map(b=>({id:b.id,name:b.name,description:b.description,image:b.image||null})),
+    statusTags:r.statusTags||[],
   }));
 
   const data=JSON.stringify({imgW:state.imgW,imgH:state.imgH,imageB64:state.imageB64,regions:exportRegions,partyMarker:state.partyMarker||{active:false}});
@@ -2144,6 +2303,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
     <button id="popup-close">&#10005;</button>
     <div id="popup-name"></div>
     <div id="popup-tag"></div>
+    <div id="popup-status-tags" style="display:none;flex-wrap:wrap;gap:5px;margin-top:6px"></div>
   </div>
   <div class="popup-tabs" id="popup-tabs"></div>
   <div id="popup-panes"></div>
@@ -2183,6 +2343,7 @@ mapContainer.addEventListener('touchstart',e=>{if(e.touches.length===1){isDrag=t
 mapContainer.addEventListener('touchmove',e=>{if(e.touches.length===1&&isDrag){vp.x=dragS.vx+(e.touches[0].clientX-dragS.x);vp.y=dragS.vy+(e.touches[0].clientY-dragS.y);applyVp();}else if(e.touches.length===2&&touches){const d=pdist(e),f=d/touches.d,ns=Math.max(0.05,Math.min(20,touches.vp.scale*f));const r=mapContainer.getBoundingClientRect(),mx=(e.touches[0].clientX+e.touches[1].clientX)/2-r.left,my=(e.touches[0].clientY+e.touches[1].clientY)/2-r.top;vp.x=mx-(mx-touches.vp.x)*(ns/touches.vp.scale);vp.y=my-(my-touches.vp.y)*(ns/touches.vp.scale);vp.scale=ns;applyVp();}e.preventDefault();},{passive:false});
 mapContainer.addEventListener('touchend',e=>{isDrag=false;if(e.touches.length<2)touches=null;});
 function pdist(e){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;return Math.sqrt(dx*dx+dy*dy);}
+const STATUS_TAG_COLORS={'Quest Active':'#f0b429','Visited':'#52c467','Cleared':'#7f8c8d','Hostile':'#e74c3c','Rumoured':'#9b59b6'};
 function hexA(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return 'rgba('+r+','+g+','+b+','+a+')';}
 function svgEl(t){return document.createElementNS('http://www.w3.org/2000/svg',t);}
 function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -2329,6 +2490,20 @@ function showPopup(r,cx,cy){
   if(r.coverImage){coverEl.src=r.coverImage;coverEl.className='has-img';}else{coverEl.src='';coverEl.className='';}
   document.getElementById('popup-name').textContent=r.name;
   document.getElementById('popup-tag').textContent=r.tag;
+  const stEl=document.getElementById('popup-status-tags');
+  if(stEl){
+    stEl.innerHTML='';
+    if(r.statusTags&&r.statusTags.length){
+      r.statusTags.forEach(tag=>{
+        const col=STATUS_TAG_COLORS[tag]||'#888';
+        const sp=document.createElement('span');
+        sp.style.cssText='background:'+col+'22;border:1px solid '+col+'88;color:'+col+';font-size:11px;border-radius:10px;padding:2px 9px;display:inline-block';
+        sp.textContent=tag;
+        stEl.appendChild(sp);
+      });
+      stEl.style.display='flex';
+    } else { stEl.style.display='none'; }
+  }
   const tabsEl=document.getElementById('popup-tabs');
   const panesEl=document.getElementById('popup-panes');
   tabsEl.innerHTML='';panesEl.innerHTML='';
@@ -2411,6 +2586,220 @@ function renderSbList(q){
 </body>
 </html>`;
 }
+
+// ============================================================
+// RESIZE HANDLE
+// ============================================================
+(()=>{
+  const handle=document.getElementById('resize-handle');
+  const panel=document.getElementById('edit-panel');
+  let resizing=false, startX=0, startW=0;
+  handle.addEventListener('mousedown',e=>{
+    if(e.button!==0) return;
+    resizing=true; startX=e.clientX; startW=panel.offsetWidth;
+    handle.classList.add('dragging');
+    panel.style.transition='none';
+    document.body.style.cursor='col-resize';
+    document.body.style.userSelect='none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!resizing) return;
+    const newW=Math.max(280,Math.min(700,startW-(e.clientX-startX)));
+    document.documentElement.style.setProperty('--edit-w',newW+'px');
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!resizing) return;
+    resizing=false;
+    handle.classList.remove('dragging');
+    panel.style.transition='';
+    document.body.style.cursor='';
+    document.body.style.userSelect='';
+  });
+})();
+
+// ============================================================
+// LORE BROWSER
+// ============================================================
+let lbSelectedId=null, lbFilterType='all', lbSearchQuery='';
+
+function openLoreBrowser(){
+  if(!lbSelectedId||!state.regions.find(x=>x.id===lbSelectedId))
+    lbSelectedId=selectedId||state.regions[0]?.id||null;
+  document.getElementById('lore-browser').classList.add('open');
+  buildLbTypeFilter();
+  renderLbList();
+  renderLbMain();
+  document.getElementById('lb-search').value=lbSearchQuery;
+  document.getElementById('lb-search').focus();
+}
+
+function closeLoreBrowser(){
+  document.getElementById('lore-browser').classList.remove('open');
+}
+
+function toggleLoreBrowser(){
+  if(document.getElementById('lore-browser').classList.contains('open')) closeLoreBrowser();
+  else openLoreBrowser();
+}
+
+function buildLbTypeFilter(){
+  const filter=document.getElementById('lb-type-filter');
+  filter.innerHTML='';
+  ['all',...TYPES].forEach(t=>{
+    const chip=document.createElement('span');
+    chip.className='type-chip'+(lbFilterType===t?' active':'');
+    chip.textContent=t==='all'?'All':t;
+    chip.onclick=()=>{ lbFilterType=t; buildLbTypeFilter(); renderLbList(); };
+    filter.appendChild(chip);
+  });
+}
+
+function renderLbList(){
+  const q=lbSearchQuery.toLowerCase();
+  const list=document.getElementById('lb-region-list');
+  list.innerHTML='';
+  state.regions
+    .filter(r=>(lbFilterType==='all'||r.tag===lbFilterType)&&(!q||r.name.toLowerCase().includes(q)))
+    .forEach(r=>{
+      const div=document.createElement('div');
+      div.className='lb-region-item'+(r.id===lbSelectedId?' active':'');
+      div.innerHTML='<div class="dot" style="background:'+r.color+'"></div>'
+        +'<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">'+escHtml(r.name)+'</span>'
+        +'<span style="font-size:10px;color:var(--text-dim)">'+r.tag+'</span>'
+        +(!r.explored?'<span style="font-size:10px;opacity:.5">🌫</span>':'');
+      div.onclick=()=>{ lbSelectedId=r.id; selectRegion(r.id); renderLbList(); renderLbMain(); };
+      list.appendChild(div);
+    });
+}
+
+function autoResize(el){ el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
+
+let lbDebounce=null;
+function lbFieldChanged(regionId,field,value){
+  const r=state.regions.find(x=>x.id===regionId); if(!r) return;
+  snapshot(); r[field]=value; saveState();
+  if(field==='name'){ renderLbList(); renderSidebar(); renderSvg(); }
+}
+function debounceLb(regionId,field,value){ clearTimeout(lbDebounce); lbDebounce=setTimeout(()=>lbFieldChanged(regionId,field,value),350); }
+
+const lbEntityDebounces={};
+function lbEntityChanged(regionId,entityType,entityId,field,value){
+  const r=state.regions.find(x=>x.id===regionId); if(!r) return;
+  const arr=entityType==='npc'?r.npcs:r.buildings;
+  const entity=arr.find(x=>x.id===entityId); if(!entity) return;
+  snapshot(); entity[field]=value; saveState();
+  if(field==='name'){
+    const hSpan=document.querySelector('#lb-content .lb-entity-header[data-entity-id="'+entityId+'"] .lb-entity-name');
+    if(hSpan) hSpan.textContent=value||'Unnamed';
+    const epSpan=document.querySelector('#'+(entityType==='npc'?'npc':'building')+'-list [data-id="'+entityId+'"] .entity-name-field');
+    if(epSpan) epSpan.textContent=value||('Unnamed '+(entityType==='npc'?'NPC':'Building'));
+  }
+}
+function debounceLbEntity(regionId,entityType,entityId,field,value){
+  const key=entityId+'_'+field;
+  clearTimeout(lbEntityDebounces[key]);
+  lbEntityDebounces[key]=setTimeout(()=>lbEntityChanged(regionId,entityType,entityId,field,value),350);
+}
+
+function lbMetaHTML(r,isLabel){
+  let h='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">';
+  h+='<div style="width:13px;height:13px;border-radius:50%;background:'+r.color+';flex-shrink:0;margin-top:6px"></div>';
+  h+='<input class="lb-edit-name" id="lb-edit-name" value="'+escHtml(r.name)+'" spellcheck="false">';
+  if(!isLabel) h+='<span class="lb-tag-badge">'+escHtml(r.tag)+'</span>';
+  h+='</div>';
+  const chips=[];
+  chips.push(r.explored?'<span class="lb-chip">✓ Explored</span>':'<span class="lb-chip" style="color:#888">🌫 Unexplored</span>');
+  if(!isLabel){
+    if(r.npcs?.length) chips.push('<span class="lb-chip">👤 '+r.npcs.length+' NPC'+(r.npcs.length!==1?'s':'')+'</span>');
+    if(r.buildings?.length) chips.push('<span class="lb-chip">🏛 '+r.buildings.length+' building'+(r.buildings.length!==1?'s':'')+'</span>');
+    const kindLabel={polygon:'⬡ Region',pin:'📍 Pin',road:'🛤 Road'}[r.kind]||'';
+    if(kindLabel) chips.push('<span class="lb-chip">'+kindLabel+'</span>');
+  }
+  h+='<div class="lb-chips">'+chips.join('')+'</div>';
+  if(!isLabel&&r.statusTags&&r.statusTags.length){
+    h+='<div class="lb-status-chips">';
+    r.statusTags.forEach(tag=>{
+      const col=STATUS_TAGS[tag]?.color||'#888';
+      h+='<span style="background:'+col+'22;border:1px solid '+col+'88;color:'+col+';font-size:11px;border-radius:10px;padding:2px 9px">'+escHtml(tag)+'</span>';
+    });
+    h+='</div>';
+  }
+  return h;
+}
+
+function lbEntityHTML(entity,entityType){
+  return '<div class="lb-entity-item">'
+    +'<div class="lb-entity-header" data-entity-id="'+entity.id+'">'
+    +'<img class="lb-entity-thumb'+(entity.image?' has-img':'')+'" '+(entity.image?'src="'+entity.image+'"':'')+' alt="">'
+    +'<span class="lb-entity-name">'+escHtml(entity.name||'Unnamed')+'</span>'
+    +'<span class="lb-entity-chevron">▶</span>'
+    +'</div>'
+    +'<div class="lb-entity-body">'
+    +(entity.image?'<img class="lb-entity-full-img has-img" src="'+entity.image+'" alt="">':'')
+    +'<span class="lb-field-label">Name</span>'
+    +'<input class="lb-entity-input" data-lb-field="name" data-entity-id="'+entity.id+'" data-entity-type="'+entityType+'" value="'+escHtml(entity.name||'')+'" placeholder="Unnamed">'
+    +'<span class="lb-field-label">Description</span>'
+    +'<textarea class="lb-entity-desc-edit" data-lb-field="description" data-entity-id="'+entity.id+'" data-entity-type="'+entityType+'" placeholder="No description.">'+escHtml(entity.description||'')+'</textarea>'
+    +'</div>'
+    +'</div>';
+}
+
+function renderLbMain(){
+  const content=document.getElementById('lb-content');
+  const r=lbSelectedId?state.regions.find(x=>x.id===lbSelectedId):null;
+  if(!r){ content.innerHTML='<div id="lb-empty">Select a location from the list</div>'; return; }
+  const isLabel=r.kind==='label';
+  const hasCover=!isLabel&&r.coverImage;
+  let html='';
+  if(hasCover){
+    html+='<div class="lb-hero">'
+      +'<div class="lb-hero-img"><img src="'+r.coverImage+'" alt=""></div>'
+      +'<div class="lb-hero-meta">'+lbMetaHTML(r,isLabel)+'</div>'
+      +'</div>';
+  } else {
+    html+='<div class="lb-header-flat">'+lbMetaHTML(r,isLabel)+'</div>';
+  }
+  html+='<div class="lb-section">'
+    +'<div class="lb-section-heading">Public Lore</div>'
+    +'<textarea id="lb-edit-lore" class="lb-edit-lore" placeholder="What players see when they click this location…">'+escHtml(r.publicLore||'')+'</textarea>'
+    +'</div>';
+  html+='<div class="lb-section">'
+    +'<div class="lb-section-heading dm">🔒 DM Notes</div>'
+    +'<textarea id="lb-edit-dm" class="lb-edit-dm" placeholder="Private notes, secrets, encounter hooks…">'+escHtml(r.dmNotes||'')+'</textarea>'
+    +'</div>';
+  if(!isLabel&&r.npcs?.length){
+    html+='<div class="lb-section"><div class="lb-section-heading">NPCs ('+r.npcs.length+')</div>';
+    r.npcs.forEach(n=>{ html+=lbEntityHTML(n,'npc'); });
+    html+='</div>';
+  }
+  if(!isLabel&&r.buildings?.length){
+    html+='<div class="lb-section"><div class="lb-section-heading">Buildings ('+r.buildings.length+')</div>';
+    r.buildings.forEach(b=>{ html+=lbEntityHTML(b,'building'); });
+    html+='</div>';
+  }
+  content.innerHTML=html;
+  const rid=r.id;
+  const nameEl=content.querySelector('#lb-edit-name');
+  if(nameEl) nameEl.oninput=()=>debounceLb(rid,'name',nameEl.value);
+  const loreEl=content.querySelector('#lb-edit-lore');
+  if(loreEl){ autoResize(loreEl); loreEl.oninput=()=>{ autoResize(loreEl); debounceLb(rid,'publicLore',loreEl.value); }; }
+  const dmEl=content.querySelector('#lb-edit-dm');
+  if(dmEl){ autoResize(dmEl); dmEl.oninput=()=>{ autoResize(dmEl); debounceLb(rid,'dmNotes',dmEl.value); }; }
+  content.querySelectorAll('[data-lb-field]').forEach(el=>{
+    if(el.tagName==='TEXTAREA') autoResize(el);
+    const {entityId,entityType,lbField}=el.dataset;
+    el.oninput=()=>{ if(el.tagName==='TEXTAREA') autoResize(el); debounceLbEntity(rid,entityType,entityId,lbField,el.value); };
+  });
+  content.querySelectorAll('.lb-entity-header').forEach(hdr=>{
+    hdr.addEventListener('click',()=>hdr.parentElement.classList.toggle('open'));
+  });
+}
+
+document.getElementById('btn-lore-browser').onclick=()=>openLoreBrowser();
+document.getElementById('btn-ep-lore-browser').onclick=()=>{ lbSelectedId=selectedId; openLoreBrowser(); };
+document.getElementById('lb-close').onclick=()=>closeLoreBrowser();
+document.getElementById('lb-search').oninput=e=>{ lbSearchQuery=e.target.value; renderLbList(); };
 
 // ============================================================
 // INIT
