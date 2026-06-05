@@ -150,6 +150,52 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 ::-webkit-scrollbar{width:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* PARTY PALETTE ITEM */
+#party-palette-item{display:flex;align-items:center;gap:6px;padding:6px 8px;margin:4px 8px 0;border-radius:4px;border:1px solid #b7950b;background:rgba(183,149,11,.08);cursor:grab;font-size:12px;color:var(--accent);user-select:none}
+#party-palette-item:hover{background:rgba(183,149,11,.18)}
+#party-palette-item span{font-size:18px;line-height:1}
+
+/* FONT STYLE BUTTONS */
+.fs-row{display:flex;gap:4px;flex-wrap:wrap}
+.fs-btn{min-width:36px}
+.fs-btn.active{background:var(--accent);border-color:var(--accent);color:#000}
+
+/* MODALS */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:400;display:none;align-items:center;justify-content:center}
+.modal-backdrop.open{display:flex}
+.modal-box{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:20px;max-width:600px;width:90%;max-height:80vh;display:flex;flex-direction:column;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
+.modal-box h2{font-size:14px;color:var(--accent);margin:0}
+.modal-close{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:18px}
+.modal-close:hover{color:var(--text)}
+
+/* LORE SEARCH */
+#search-modal .modal-box{position:relative}
+#search-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:13px;font-family:inherit}
+#search-input:focus{outline:none;border-color:var(--accent)}
+#search-results{overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px}
+.sr-item{padding:8px 10px;border-radius:4px;background:var(--surface);cursor:pointer;border:1px solid var(--border)}
+.sr-item:hover{border-color:var(--accent)}
+.sr-name{font-size:13px;color:var(--accent);margin-bottom:3px}
+.sr-snippet{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr-field{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-right:4px}
+#search-empty{color:var(--text-dim);font-size:12px;text-align:center;padding:20px}
+
+/* SHORTCUTS MODAL */
+.shortcut-table{width:100%;border-collapse:collapse;font-size:12px}
+.shortcut-table td{padding:5px 8px;border-bottom:1px solid var(--border)}
+.shortcut-table td:first-child{color:var(--accent);white-space:nowrap;width:140px}
+.shortcut-table td:last-child{color:var(--text-dim)}
+.shortcut-section{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;padding:10px 8px 4px;border-bottom:1px solid var(--border)}
+
+/* SCRATCHPAD */
+#scratchpad{position:fixed;bottom:48px;right:12px;width:320px;background:var(--panel);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,.5);z-index:300;display:none;flex-direction:column}
+#scratchpad.open{display:flex}
+#scratchpad-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);cursor:move}
+#scratchpad-header span{font-size:12px;color:var(--accent)}
+#scratchpad textarea{flex:1;resize:none;min-height:200px;background:transparent;border:none;padding:10px 12px;color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:12px;line-height:1.55}
+#scratchpad textarea:focus{outline:none}
+#scratchpad textarea::placeholder{color:var(--text-dim)}
 </style>
 </head>
 <body>
@@ -159,6 +205,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
   <input type="file" id="file-img" accept="image/*" style="display:none">
   <div class="sep"></div>
   <button class="btn btn-icon" id="btn-polygon" title="Polygon (P)">⬡</button>
+  <button class="btn btn-icon" id="btn-label" title="Text Label (L)">𝖳</button>
   <div class="sep"></div>
   <button class="btn btn-icon" id="btn-undo" title="Undo Ctrl+Z">↩</button>
   <button class="btn btn-icon" id="btn-redo" title="Redo Ctrl+Y">↪</button>
@@ -169,13 +216,19 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
   <div class="sep"></div>
   <button class="btn primary" id="btn-export-player">Export Player Map</button>
   <div style="flex:1"></div>
-  <span id="status-msg" style="color:var(--text-dim);font-size:11px"></span>
+  <button class="btn btn-icon" id="btn-search" title="Search Lore (Ctrl+F)">🔍</button>
+  <button class="btn btn-icon" id="btn-scratch" title="DM Scratchpad">📝</button>
+  <button class="btn btn-icon" id="btn-help" title="Keyboard Shortcuts (?)">?</button>
+  <span id="status-msg" style="color:var(--text-dim);font-size:11px;margin-left:4px"></span>
 </div>
 
 <div id="main">
   <div id="sidebar">
     <div id="pin-palette">
-      <div id="pin-palette-label">Drag to place pin</div>
+      <div id="party-palette-item" draggable="true" title="Drag to place / move party marker">
+        <span>⚔</span>Party Location
+      </div>
+      <div id="pin-palette-label" style="margin-top:6px">Drag to place pin</div>
       <div id="pin-palette-grid"></div>
     </div>
     <div id="sidebar-header">
@@ -255,6 +308,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
               <input type="range" id="ep-size" min="15" max="500" step="5" value="100">
             </div>
           </div>
+          <div class="field" id="ep-fontstyle-field" style="display:none">
+            <label>Style</label>
+            <div class="fs-row">
+              <button class="fs-btn btn sm active" data-style="normal">Aa</button>
+              <button class="fs-btn btn sm" data-style="italic"><em>Aa</em></button>
+              <button class="fs-btn btn sm" data-style="bold"><strong>Aa</strong></button>
+              <button class="fs-btn btn sm" data-style="bold italic"><strong><em>Aa</em></strong></button>
+            </div>
+          </div>
           <button class="btn" id="btn-continue-road" style="display:none;width:100%;margin-bottom:10px">▶ Continue Road from End</button>
           <div class="field">
             <label>Public Lore</label>
@@ -284,6 +346,56 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
       </div>
     </div>
   </div>
+</div>
+
+<!-- Lore Search Modal -->
+<div class="modal-backdrop" id="search-modal">
+  <div class="modal-box" style="height:70vh">
+    <button class="modal-close" id="search-close">✕</button>
+    <h2>🔍 Search Lore</h2>
+    <input type="text" id="search-input" placeholder="Search names, lore, NPCs, buildings…" autocomplete="off">
+    <div id="search-results"><div id="search-empty">Start typing to search</div></div>
+  </div>
+</div>
+
+<!-- Keyboard Shortcuts Modal -->
+<div class="modal-backdrop" id="shortcuts-modal">
+  <div class="modal-box" style="overflow-y:auto">
+    <button class="modal-close" id="shortcuts-close">✕</button>
+    <h2>⌨ Keyboard Shortcuts</h2>
+    <table class="shortcut-table">
+      <tr><td colspan="2" class="shortcut-section">Drawing</td></tr>
+      <tr><td>P</td><td>Polygon tool</td></tr>
+      <tr><td>L</td><td>Text label tool</td></tr>
+      <tr><td>Enter</td><td>Close polygon / finish road</td></tr>
+      <tr><td>Esc</td><td>Cancel drawing / deselect</td></tr>
+      <tr><td>Double-click</td><td>Close polygon / finish road</td></tr>
+      <tr><td>Right-click (map)</td><td>Finish road · deselect · pan</td></tr>
+      <tr><td colspan="2" class="shortcut-section">Editing</td></tr>
+      <tr><td>Ctrl + drag shape</td><td>Move region or road</td></tr>
+      <tr><td>Drag vertex handle</td><td>Move a polygon/road point</td></tr>
+      <tr><td>Click midpoint ◆</td><td>Insert vertex</td></tr>
+      <tr><td>Right-click vertex</td><td>Delete vertex</td></tr>
+      <tr><td>Scroll wheel (selected)</td><td>Resize pin or road</td></tr>
+      <tr><td>Delete</td><td>Delete selected region</td></tr>
+      <tr><td>Right-click shape</td><td>Context menu (select / delete)</td></tr>
+      <tr><td colspan="2" class="shortcut-section">History</td></tr>
+      <tr><td>Ctrl+Z</td><td>Undo</td></tr>
+      <tr><td>Ctrl+Y / Ctrl+Shift+Z</td><td>Redo</td></tr>
+      <tr><td colspan="2" class="shortcut-section">Tools</td></tr>
+      <tr><td>Ctrl+F</td><td>Search lore</td></tr>
+      <tr><td>?</td><td>Keyboard shortcuts</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- DM Scratchpad -->
+<div id="scratchpad">
+  <div id="scratchpad-header">
+    <span>📝 DM Scratchpad</span>
+    <button class="btn sm" id="scratch-close">✕</button>
+  </div>
+  <textarea id="scratch-text" placeholder="Quick notes, initiative order, reminders…"></textarea>
 </div>
 
 <div id="drop-overlay">Drop image here</div>
@@ -317,7 +429,7 @@ const PIN_ICONS = {
 // ============================================================
 // STATE
 // ============================================================
-let state = { imageB64:null, imgW:0, imgH:0, regions:[], nextId:1 };
+let state = { imageB64:null, imgW:0, imgH:0, regions:[], nextId:1, scratchpad:'', partyMarker:{active:false,px:.5,py:.5} };
 let viewport = { x:0, y:0, scale:1 };
 let activeTool = null;
 let drawing = [];
@@ -325,8 +437,9 @@ let selectedId = null;
 let hoveredId = null;
 let snapClose = false;
 let undoStack = [], redoStack = [];
-let db = null;           // IndexedDB instance
+let db = null;
 let moveState = null;
+let partyDrag = null;
 let vertexDrag = null;
 const defaultPinSizes = {};
 let defaultRoadSize = 1;
@@ -408,6 +521,8 @@ function openDB(){
 }
 
 function migrateRegions(){
+  if(!state.scratchpad) state.scratchpad='';
+  if(!state.partyMarker) state.partyMarker={active:false,px:.5,py:.5};
   state.regions.forEach(r=>{
     if(!r.npcs) r.npcs=[];
     if(!r.buildings) r.buildings=[];
@@ -415,6 +530,8 @@ function migrateRegions(){
     if(!('fillOpacity' in r)) r.fillOpacity=1;
     if(!('pinSize' in r)) r.pinSize=1;
     if(!('roadSize' in r)) r.roadSize=1;
+    if(!('fontSize' in r)) r.fontSize=1;
+    if(!('fontStyle' in r)) r.fontStyle='normal';
   });
 }
 
@@ -577,7 +694,10 @@ mapContainer.addEventListener('wheel',e=>{
       clearTimeout(scrollResizeTimer);
       scrollResizeTimer=setTimeout(()=>{ scrollResizeSnapshotted=false; saveState(); },600);
 
-      if(r.kind==='pin'){
+      if(r.kind==='label'){
+        r.fontSize=Math.max(0.15,Math.min(6,(r.fontSize??1)*factor));
+        if(selectedId===r.id){ const p=Math.round(r.fontSize*100); document.getElementById('ep-size').value=p; document.getElementById('ep-size-val').textContent=p+'%'; }
+      } else if(r.kind==='pin'){
         r.pinSize=Math.max(0.15,Math.min(6,(r.pinSize??1)*factor));
         defaultPinSizes[r.tag]=r.pinSize;
         // Keep slider in sync if this pin is open in edit panel
@@ -643,6 +763,13 @@ document.addEventListener('mousemove',e=>{
     applyViewport(); return;
   }
 
+  if(partyDrag){
+    const {nx,ny}=screenToNorm(lastMouseScreen.x,lastMouseScreen.y);
+    state.partyMarker.px=Math.max(0,Math.min(1,partyDrag.origPx+nx-partyDrag.msNx));
+    state.partyMarker.py=Math.max(0,Math.min(1,partyDrag.origPy+ny-partyDrag.msNy));
+    renderSvg(); return;
+  }
+
   if(moveState){
     const {nx,ny}=screenToNorm(lastMouseScreen.x,lastMouseScreen.y);
     const dnx=nx-moveState.msNx, dny=ny-moveState.msNy;
@@ -677,6 +804,9 @@ document.addEventListener('mousemove',e=>{
 document.addEventListener('mouseup',e=>{
   if(e.button===1||e.button===2){ isDragging=false; return; }
   if(e.button===0){
+    if(partyDrag){
+      partyDrag=null; mapContainer.style.cursor='default'; saveState(); return;
+    }
     if(moveState||vertexDrag){
       moveState=null; vertexDrag=null;
       mapContainer.style.cursor=activeTool?'crosshair':'default';
@@ -721,7 +851,6 @@ function updateDrawingCursor(screen){
 // ============================================================
 // SVG — TOOLS & CLICKS
 // ============================================================
-// Polygon uses click (no SVG rebuild issue since mousemove doesn't always trigger it)
 mapSvg.addEventListener('click',e=>{
   if(!activeTool||!state.imageB64||isDragging||activeTool==='road') return;
   const rect=mapContainer.getBoundingClientRect();
@@ -729,6 +858,12 @@ mapSvg.addEventListener('click',e=>{
   if(activeTool==='polygon'){
     if(drawing.length>=3&&snapClose){ closePolygon(); return; }
     drawing.push({nx,ny}); renderSvg();
+  }
+  if(activeTool==='label'){
+    snapshot();
+    const r=newRegion('label'); r.px=nx; r.py=ny;
+    state.regions.push(r); setTool(null);
+    saveState(); renderSvg(); renderSidebar(); selectRegion(r.id);
   }
 });
 mapSvg.addEventListener('dblclick',e=>{
@@ -771,16 +906,17 @@ function closeRoad(){
 
 function newRegion(kind, tag){
   const t=tag||'Other';
-  const defaultName = kind==='pin' ? t+' Pin' : kind==='road' ? 'Road' : 'Region';
-  const ps = kind==='pin' ? (defaultPinSizes[t] ?? 1) : 1;
+  const defaultName = kind==='pin'?t+' Pin':kind==='road'?'Road':kind==='label'?'Label':'Region';
+  const ps = kind==='pin' ? (defaultPinSizes[t]??1) : 1;
   const rs = kind==='road' ? defaultRoadSize : 1;
-  return { id:'r'+(state.nextId++), kind, name:'Unnamed '+defaultName, tag:t, color:TYPE_COLORS[t]||TYPE_COLORS.Other, publicLore:'', dmNotes:'', explored:true, coverImage:null, fillOpacity:1, pinSize:ps, roadSize:rs, points:[], px:.5, py:.5, npcs:[], buildings:[] };
+  return { id:'r'+(state.nextId++), kind, name:defaultName, tag:t, color:kind==='label'?'#e8d5a0':(TYPE_COLORS[t]||TYPE_COLORS.Other), publicLore:'', dmNotes:'', explored:true, coverImage:null, fillOpacity:1, pinSize:ps, roadSize:rs, fontSize:1, fontStyle:'normal', points:[], px:.5, py:.5, npcs:[], buildings:[] };
 }
 
 function setTool(tool){
   activeTool = activeTool===tool ? null : tool;
   drawing=[]; snapClose=false;
   document.getElementById('btn-polygon').classList.toggle('active',activeTool==='polygon');
+  document.getElementById('btn-label').classList.toggle('active',activeTool==='label');
   mapContainer.style.cursor=activeTool?'crosshair':'default';
   updateHint(); renderSvg();
 }
@@ -788,10 +924,17 @@ function setTool(tool){
 function updateHint(){
   if(activeTool==='polygon') cursorHint.textContent=drawing.length<3?'Click to add vertices • Esc to cancel':'Click near start or Enter to close • Esc to cancel';
   else if(activeTool==='road') cursorHint.textContent=drawing.length<2?'Click to start road • Esc to cancel':'Click to add points • Double-click or Enter to finish • Esc to cancel';
+  else if(activeTool==='label') cursorHint.textContent='Click to place text label • Esc to cancel';
   else cursorHint.textContent='';
 }
 
 document.getElementById('btn-polygon').onclick=()=>setTool('polygon');
+document.getElementById('btn-label').onclick=()=>setTool('label');
+
+document.getElementById('party-palette-item').addEventListener('dragstart',e=>{
+  e.dataTransfer.setData('text/plain','__party__');
+  e.dataTransfer.effectAllowed='copy';
+});
 
 function onShapeClick(e){
   if(activeTool) return;
@@ -903,10 +1046,15 @@ mapContainer.addEventListener('dragover',e=>{
 
 mapContainer.addEventListener('drop',e=>{
   const type=e.dataTransfer.getData('text/plain');
-  if(!TYPES.includes(type)||!state.imageB64) return;
+  if(!state.imageB64) return;
   e.preventDefault();
   const rect=mapContainer.getBoundingClientRect();
   const {nx,ny}=screenToNorm(e.clientX-rect.left, e.clientY-rect.top);
+  if(type==='__party__'){
+    state.partyMarker={active:true,px:nx,py:ny};
+    saveState(); renderSvg(); return;
+  }
+  if(!TYPES.includes(type)) return;
   if(type==='Road'){
     // Start road-drawing mode with the drop point as first vertex
     drawing=[{nx,ny}];
@@ -1150,6 +1298,89 @@ function renderSvg(){
         });
       }
     }
+
+    if(r.kind==='label'){
+      const px=r.px*W, py=r.py*H;
+      const fs=Math.max(12,W*0.014*(r.fontSize??1));
+      const isItalic=(r.fontStyle||'normal').includes('italic');
+      const isBold=(r.fontStyle||'normal').includes('bold');
+      const col=r.explored?(isSel||isHov?r.color:'#c8b87a'):'#555';
+
+      // Transparent wide hit area (stroke on text)
+      const hitT=makeSvgEl('text');
+      hitT.setAttribute('x',px); hitT.setAttribute('y',py);
+      hitT.setAttribute('text-anchor','middle'); hitT.setAttribute('dominant-baseline','middle');
+      hitT.setAttribute('font-size',fs); hitT.setAttribute('font-family','Georgia,serif');
+      hitT.setAttribute('font-style',isItalic?'italic':'normal');
+      hitT.setAttribute('font-weight',isBold?'bold':'normal');
+      hitT.setAttribute('fill','transparent'); hitT.setAttribute('stroke','transparent');
+      hitT.setAttribute('stroke-width',fs*0.8);
+      hitT.style.cursor='pointer'; hitT.dataset.id=r.id;
+      hitT.textContent=r.name||'Label';
+      hitT.addEventListener('click',onShapeClick);
+      hitT.addEventListener('mousedown',e=>{ if(e.button===2){e.stopPropagation();return;} onShapeMousedown(e,r.id); });
+      hitT.addEventListener('contextmenu',e=>onShapeContextMenu(e,r.id));
+      hitT.addEventListener('mouseenter',()=>{ hoveredId=r.id; renderSvg(); });
+      hitT.addEventListener('mouseleave',()=>{ hoveredId=null; renderSvg(); });
+      mapSvg.appendChild(hitT);
+
+      const txt=makeSvgEl('text');
+      txt.setAttribute('x',px); txt.setAttribute('y',py);
+      txt.setAttribute('text-anchor','middle'); txt.setAttribute('dominant-baseline','middle');
+      txt.setAttribute('font-size',fs); txt.setAttribute('font-family','Georgia,serif');
+      txt.setAttribute('font-style',isItalic?'italic':'normal');
+      txt.setAttribute('font-weight',isBold?'bold':'normal');
+      txt.setAttribute('fill',col);
+      txt.setAttribute('paint-order','stroke'); txt.setAttribute('stroke','rgba(0,0,0,0.75)');
+      txt.setAttribute('stroke-width',3); txt.setAttribute('vector-effect','non-scaling-stroke');
+      txt.setAttribute('pointer-events','none');
+      if(isSel||isHov) txt.setAttribute('filter','url(#glow)');
+      if(isSel){ txt.setAttribute('stroke','rgba(201,168,76,0.6)'); txt.setAttribute('stroke-width',4); }
+      txt.textContent=r.name||'Label';
+      mapSvg.appendChild(txt);
+      if(r.dmNotes){
+        const dm=makeSvgEl('text');
+        dm.setAttribute('x',px+fs*(r.name||'Label').length*0.3+4); dm.setAttribute('y',py);
+        dm.setAttribute('font-size',fs*0.75); dm.setAttribute('fill','#ff7070');
+        dm.setAttribute('dominant-baseline','middle'); dm.setAttribute('pointer-events','none');
+        dm.textContent='🔒'; mapSvg.appendChild(dm);
+      }
+    }
+  }
+
+  // Party marker
+  if(state.partyMarker?.active){
+    const pmx=state.partyMarker.px*W, pmy=state.partyMarker.py*H;
+    const pms=iconSize*1.15;
+    const ring=makeSvgEl('circle');
+    ring.setAttribute('cx',pmx); ring.setAttribute('cy',pmy); ring.setAttribute('r',pms*0.72);
+    ring.setAttribute('fill','rgba(255,200,50,0.12)'); ring.setAttribute('stroke','#ffc832');
+    ring.setAttribute('stroke-width',2); ring.setAttribute('vector-effect','non-scaling-stroke');
+    ring.setAttribute('filter','url(#glow)'); ring.setAttribute('pointer-events','none');
+    mapSvg.appendChild(ring);
+    const icon=makeSvgEl('text');
+    icon.setAttribute('x',pmx); icon.setAttribute('y',pmy);
+    icon.setAttribute('text-anchor','middle'); icon.setAttribute('dominant-baseline','middle');
+    icon.setAttribute('font-size',pms*0.82); icon.setAttribute('fill','#ffc832');
+    icon.setAttribute('pointer-events','none'); icon.textContent='⚔';
+    mapSvg.appendChild(icon);
+    // Draggable hit circle (no Ctrl needed for party marker)
+    const pmhit=makeSvgEl('circle');
+    pmhit.setAttribute('cx',pmx); pmhit.setAttribute('cy',pmy); pmhit.setAttribute('r',pms*0.72);
+    pmhit.setAttribute('fill','transparent'); pmhit.style.cursor='grab';
+    pmhit.addEventListener('mousedown',e=>{
+      if(e.button!==0) return;
+      e.preventDefault(); e.stopPropagation();
+      const rect=mapContainer.getBoundingClientRect();
+      const {nx,ny}=screenToNorm(e.clientX-rect.left,e.clientY-rect.top);
+      partyDrag={msNx:nx,msNy:ny,origPx:state.partyMarker.px,origPy:state.partyMarker.py};
+      mapContainer.style.cursor='grabbing';
+    });
+    pmhit.addEventListener('contextmenu',e=>{
+      e.preventDefault(); e.stopPropagation();
+      if(confirm('Remove party marker?')){ state.partyMarker.active=false; saveState(); renderSvg(); }
+    });
+    mapSvg.appendChild(pmhit);
   }
 
   // in-progress polygon
@@ -1273,34 +1504,46 @@ function repopulateEditPanel(){
   const opPct=Math.round((r.fillOpacity??1)*100);
   document.getElementById('ep-opacity').value=opPct;
   document.getElementById('ep-opacity-val').textContent=opPct+'%';
-  // Size slider (pins and roads)
+  // Show/hide tabs (labels don't have NPCs or buildings)
+  const isLabel=r.kind==='label';
+  document.querySelectorAll('.ep-tab[data-tab="npcs"],.ep-tab[data-tab="buildings"]').forEach(t=>t.style.display=isLabel?'none':'');
+  // Cover image hidden for labels (they have no portrait)
+  document.querySelector('.cover-wrap').style.display=isLabel?'none':'block';
+  // Font style (labels only)
+  const fsfEl=document.getElementById('ep-fontstyle-field');
+  fsfEl.style.display=isLabel?'block':'none';
+  if(isLabel){
+    const cur=r.fontStyle||'normal';
+    document.querySelectorAll('.fs-btn').forEach(b=>b.classList.toggle('active',b.dataset.style===cur));
+  }
+  // Size slider (pins, roads, labels)
   const sizeField=document.getElementById('ep-size-field');
   const continueBtn=document.getElementById('btn-continue-road');
   if(r.kind==='pin'){
-    sizeField.style.display='block';
+    sizeField.style.display='block'; continueBtn.style.display='none';
     document.getElementById('ep-size-label').firstChild.textContent='Pin Size ';
     const sPct=Math.round((r.pinSize??1)*100);
-    document.getElementById('ep-size').value=sPct;
-    document.getElementById('ep-size-val').textContent=sPct+'%';
-    continueBtn.style.display='none';
+    document.getElementById('ep-size').value=sPct; document.getElementById('ep-size-val').textContent=sPct+'%';
   } else if(r.kind==='road'){
-    sizeField.style.display='block';
+    sizeField.style.display='block'; continueBtn.style.display='block';
     document.getElementById('ep-size-label').firstChild.textContent='Road Size ';
     const sPct=Math.round((r.roadSize??1)*100);
-    document.getElementById('ep-size').value=sPct;
-    document.getElementById('ep-size-val').textContent=sPct+'%';
-    continueBtn.style.display='block';
+    document.getElementById('ep-size').value=sPct; document.getElementById('ep-size-val').textContent=sPct+'%';
+  } else if(r.kind==='label'){
+    sizeField.style.display='block'; continueBtn.style.display='none';
+    document.getElementById('ep-size-label').firstChild.textContent='Font Size ';
+    const sPct=Math.round((r.fontSize??1)*100);
+    document.getElementById('ep-size').value=sPct; document.getElementById('ep-size-val').textContent=sPct+'%';
   } else {
-    sizeField.style.display='none';
-    continueBtn.style.display='none';
+    sizeField.style.display='none'; continueBtn.style.display='none';
   }
   updateSwatches(r.tag);
-  // counts
-  document.getElementById('npc-count').textContent=r.npcs.length||'';
-  document.getElementById('bld-count').textContent=r.buildings.length||'';
-  // entity lists
-  renderEntityList('npc',r.npcs);
-  renderEntityList('building',r.buildings);
+  // counts and entity lists (skip for labels)
+  if(!isLabel){
+    document.getElementById('npc-count').textContent=r.npcs.length||'';
+    document.getElementById('bld-count').textContent=r.buildings.length||'';
+    renderEntityList('npc',r.npcs); renderEntityList('building',r.buildings);
+  }
 }
 
 function updateSwatches(tag){
@@ -1323,8 +1566,10 @@ function editFieldChanged(field,value){
   if(field==='lore') r.publicLore=value;
   if(field==='dm')   r.dmNotes=value;
   if(field==='fillOpacity') r.fillOpacity=value;
-  if(field==='pinSize')  r.pinSize=value;
-  if(field==='roadSize') r.roadSize=value;
+  if(field==='pinSize')   r.pinSize=value;
+  if(field==='roadSize')  r.roadSize=value;
+  if(field==='fontSize')  r.fontSize=value;
+  if(field==='fontStyle') r.fontStyle=value;
   saveState(); renderSvg(); renderSidebar();
 }
 
@@ -1344,16 +1589,19 @@ document.getElementById('ep-opacity').oninput=e=>{
 document.getElementById('ep-size').oninput=e=>{
   const pct=parseInt(e.target.value);
   document.getElementById('ep-size-val').textContent=pct+'%';
-  const r=state.regions.find(x=>x.id===selectedId);
-  if(!r) return;
-  if(r.kind==='road'){
-    editFieldChanged('roadSize', pct/100);
-    defaultRoadSize=pct/100;
-  } else {
-    editFieldChanged('pinSize', pct/100);
-    if(r.tag) defaultPinSizes[r.tag]=pct/100;
-  }
+  const r=state.regions.find(x=>x.id===selectedId); if(!r) return;
+  if(r.kind==='road'){ editFieldChanged('roadSize',pct/100); defaultRoadSize=pct/100; }
+  else if(r.kind==='label'){ editFieldChanged('fontSize',pct/100); }
+  else { editFieldChanged('pinSize',pct/100); if(r.tag) defaultPinSizes[r.tag]=pct/100; }
 };
+
+document.querySelectorAll('.fs-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.fs-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    editFieldChanged('fontStyle', btn.dataset.style);
+  });
+});
 
 document.getElementById('fog-toggle').onclick=()=>{
   const r=state.regions.find(x=>x.id===selectedId); if(!r) return;
@@ -1649,10 +1897,84 @@ document.addEventListener('keydown',e=>{
       selectRegion(null); saveState(); renderSvg(); renderSidebar(); return;
     }
     if(e.key==='p'||e.key==='P'){ setTool('polygon'); return; }
+    if(e.key==='l'||e.key==='L'){ setTool('label'); return; }
+    if(e.key==='?'){ toggleShortcuts(); return; }
   }
+  if(e.ctrlKey&&e.key==='f'){ e.preventDefault(); openSearch(); }
   if(e.ctrlKey&&!e.shiftKey&&e.key==='z'){ e.preventDefault(); undo(); }
   if(e.ctrlKey&&(e.key==='y'||(e.shiftKey&&e.key==='z'))){ e.preventDefault(); redo(); }
 });
+
+// ============================================================
+// SCRATCHPAD
+// ============================================================
+const scratchpad=document.getElementById('scratchpad');
+document.getElementById('btn-scratch').onclick=()=>scratchpad.classList.toggle('open');
+document.getElementById('scratch-close').onclick=()=>scratchpad.classList.remove('open');
+const scratchText=document.getElementById('scratch-text');
+scratchText.oninput=()=>{ state.scratchpad=scratchText.value; saveState(); };
+function syncScratchpad(){ scratchText.value=state.scratchpad||''; }
+
+// ============================================================
+// LORE SEARCH
+// ============================================================
+function openSearch(){
+  document.getElementById('search-modal').classList.add('open');
+  document.getElementById('search-input').focus();
+}
+document.getElementById('btn-search').onclick=openSearch;
+document.getElementById('search-close').onclick=()=>document.getElementById('search-modal').classList.remove('open');
+document.getElementById('search-modal').addEventListener('click',e=>{ if(e.target===document.getElementById('search-modal')) document.getElementById('search-modal').classList.remove('open'); });
+
+function snippet(text, q){
+  if(!text) return '';
+  const i=text.toLowerCase().indexOf(q.toLowerCase());
+  if(i<0) return text.slice(0,80);
+  const start=Math.max(0,i-30), end=Math.min(text.length,i+q.length+50);
+  return (start>0?'…':'')+text.slice(start,end)+(end<text.length?'…':'');
+}
+
+document.getElementById('search-input').oninput=function(){
+  const q=this.value.trim();
+  const results=document.getElementById('search-results');
+  const empty=document.getElementById('search-empty');
+  if(!q){ results.innerHTML=''; results.appendChild(empty); empty.textContent='Start typing to search'; return; }
+  const hits=[];
+  state.regions.forEach(r=>{
+    const matches=[];
+    if(r.name.toLowerCase().includes(q.toLowerCase())) matches.push({field:'Name',text:r.name});
+    if(r.publicLore&&r.publicLore.toLowerCase().includes(q.toLowerCase())) matches.push({field:'Lore',text:snippet(r.publicLore,q)});
+    if(r.dmNotes&&r.dmNotes.toLowerCase().includes(q.toLowerCase())) matches.push({field:'DM Notes',text:snippet(r.dmNotes,q)});
+    (r.npcs||[]).forEach(n=>{
+      if(n.name&&n.name.toLowerCase().includes(q.toLowerCase())) matches.push({field:'NPC',text:n.name});
+      if(n.description&&n.description.toLowerCase().includes(q.toLowerCase())) matches.push({field:'NPC desc',text:snippet(n.description,q)});
+    });
+    (r.buildings||[]).forEach(b=>{
+      if(b.name&&b.name.toLowerCase().includes(q.toLowerCase())) matches.push({field:'Building',text:b.name});
+      if(b.description&&b.description.toLowerCase().includes(q.toLowerCase())) matches.push({field:'Building desc',text:snippet(b.description,q)});
+    });
+    if(matches.length) hits.push({r,matches});
+  });
+  results.innerHTML='';
+  if(!hits.length){ const e=document.createElement('div'); e.id='search-empty'; e.textContent='No results for "'+escHtml(q)+'"'; results.appendChild(e); return; }
+  hits.forEach(({r,matches})=>{
+    const item=document.createElement('div'); item.className='sr-item';
+    item.innerHTML='<div class="sr-name">'+escHtml(r.name)+'</div>'+
+      matches.slice(0,2).map(m=>'<div class="sr-snippet"><span class="sr-field">'+escHtml(m.field)+'</span>'+escHtml(m.text)+'</div>').join('');
+    item.onclick=()=>{ document.getElementById('search-modal').classList.remove('open'); selectRegion(r.id); };
+    results.appendChild(item);
+  });
+};
+
+// ============================================================
+// KEYBOARD SHORTCUTS MODAL
+// ============================================================
+function toggleShortcuts(){
+  document.getElementById('shortcuts-modal').classList.toggle('open');
+}
+document.getElementById('btn-help').onclick=toggleShortcuts;
+document.getElementById('shortcuts-close').onclick=()=>document.getElementById('shortcuts-modal').classList.remove('open');
+document.getElementById('shortcuts-modal').addEventListener('click',e=>{ if(e.target===document.getElementById('shortcuts-modal')) document.getElementById('shortcuts-modal').classList.remove('open'); });
 
 // ============================================================
 // POPULATE STATIC DROPDOWNS
@@ -1669,13 +1991,14 @@ function generatePlayerExport(){
   const exportRegions=state.regions.map(r=>({
     id:r.id, kind:r.kind, name:r.name, tag:r.tag, color:r.color,
     publicLore:r.publicLore, explored:r.explored, fillOpacity:r.fillOpacity??1, pinSize:r.pinSize??1, roadSize:r.roadSize??1,
+    fontSize:r.fontSize??1, fontStyle:r.fontStyle||'normal',
     coverImage:r.coverImage||null,
     points:r.points, px:r.px, py:r.py,
     npcs:(r.npcs||[]).map(n=>({id:n.id,name:n.name,description:n.description,image:n.image||null})),
     buildings:(r.buildings||[]).map(b=>({id:b.id,name:b.name,description:b.description,image:b.image||null})),
   }));
 
-  const data=JSON.stringify({imgW:state.imgW,imgH:state.imgH,imageB64:state.imageB64,regions:exportRegions});
+  const data=JSON.stringify({imgW:state.imgW,imgH:state.imgH,imageB64:state.imageB64,regions:exportRegions,partyMarker:state.partyMarker||{active:false}});
   const iconsJson=JSON.stringify(PIN_ICONS);
 
   return `<!DOCTYPE html>
@@ -1888,7 +2211,50 @@ function renderMap(){
         appendPlayerLabel(r.points[mi][0]*W,r.points[mi][1]*H-dotR*3,r.name,W);
       }
     }
+    if(r.kind==='label'&&r.explored){
+      const px=r.px*W,py=r.py*H;
+      const fs=Math.max(12,W*0.014*(r.fontSize??1));
+      const t=svgEl('text');
+      t.setAttribute('x',px);t.setAttribute('y',py);
+      t.setAttribute('text-anchor','middle');t.setAttribute('dominant-baseline','middle');
+      t.setAttribute('font-size',fs);t.setAttribute('font-family','Georgia,serif');
+      t.setAttribute('font-style',(r.fontStyle||'').includes('italic')?'italic':'normal');
+      t.setAttribute('font-weight',(r.fontStyle||'').includes('bold')?'bold':'normal');
+      t.setAttribute('fill',r.color||'#c8b87a');
+      t.setAttribute('paint-order','stroke');t.setAttribute('stroke','rgba(0,0,0,0.75)');
+      t.setAttribute('stroke-width',3);t.setAttribute('vector-effect','non-scaling-stroke');
+      t.setAttribute('pointer-events','none');
+      t.textContent=r.name||'';
+      mapSvg.appendChild(t);
+    }
   });
+  // Party marker
+  if(MAP_DATA.partyMarker&&MAP_DATA.partyMarker.active){
+    const pmx=MAP_DATA.partyMarker.px*W,pmy=MAP_DATA.partyMarker.py*H;
+    const pms=iconSize*1.15;
+    const defs2=svgEl('defs');
+    defs2.innerHTML='<style>@keyframes pulse{0%,100%{opacity:0.25;r:'+(pms*0.72)+'}50%{opacity:0.55;r:'+(pms*1.1)+'}}</style>';
+    mapSvg.appendChild(defs2);
+    const pr=svgEl('circle');
+    pr.setAttribute('cx',pmx);pr.setAttribute('cy',pmy);pr.setAttribute('r',pms*0.72);
+    pr.setAttribute('fill','rgba(255,200,50,0.15)');pr.setAttribute('stroke','#ffc832');
+    pr.setAttribute('stroke-width',2);pr.setAttribute('vector-effect','non-scaling-stroke');
+    pr.setAttribute('filter','url(#glow)');pr.setAttribute('pointer-events','none');
+    pr.style.animation='pulse 2s ease-in-out infinite';
+    mapSvg.appendChild(pr);
+    const pi=svgEl('text');
+    pi.setAttribute('x',pmx);pi.setAttribute('y',pmy);
+    pi.setAttribute('text-anchor','middle');pi.setAttribute('dominant-baseline','middle');
+    pi.setAttribute('font-size',pms*0.82);pi.setAttribute('fill','#ffc832');
+    pi.setAttribute('pointer-events','none');pi.textContent='⚔';
+    mapSvg.appendChild(pi);
+    // Click for popup
+    const phit=svgEl('circle');
+    phit.setAttribute('cx',pmx);phit.setAttribute('cy',pmy);phit.setAttribute('r',pms*0.9);
+    phit.setAttribute('fill','transparent');phit.style.cursor='pointer';
+    phit.addEventListener('click',e=>{e.stopPropagation();showPopup({name:'Party Location',tag:'',explored:true,publicLore:'Your party is currently here.',kind:'party',npcs:[],buildings:[],coverImage:null},e.clientX,e.clientY);});
+    mapSvg.appendChild(phit);
+  }
 }
 function appendPlayerLabel(cx,cy,name,W){
   const fs=Math.max(10,Math.min(14,W*0.01));
@@ -1996,6 +2362,7 @@ buildTypeFilter();
 buildPinPalette();
 loadState().then(()=>{
   if(!state.imageB64) noMap.style.display='flex';
+  syncScratchpad();
 });
 </script>
 </body>
