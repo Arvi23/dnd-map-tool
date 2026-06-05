@@ -325,6 +325,7 @@ let selectedId = null;
 let hoveredId = null;
 let snapClose = false;
 let undoStack = [], redoStack = [];
+let db = null;           // IndexedDB instance
 let moveState = null;
 let vertexDrag = null;
 const defaultPinSizes = {};
@@ -395,33 +396,70 @@ function downloadBlob(blob, name){
 }
 
 // ============================================================
-// PERSISTENCE
+// PERSISTENCE  (IndexedDB — no size limit unlike localStorage)
 // ============================================================
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open('dnd_map_db',1);
+    req.onupgradeneeded=e=>e.target.result.createObjectStore('state');
+    req.onsuccess=e=>{ db=e.target.result; resolve(db); };
+    req.onerror=()=>reject(req.error);
+  });
+}
+
+function migrateRegions(){
+  state.regions.forEach(r=>{
+    if(!r.npcs) r.npcs=[];
+    if(!r.buildings) r.buildings=[];
+    if(!('coverImage' in r)) r.coverImage=null;
+    if(!('fillOpacity' in r)) r.fillOpacity=1;
+    if(!('pinSize' in r)) r.pinSize=1;
+    if(!('roadSize' in r)) r.roadSize=1;
+  });
+}
+
 function saveState(){
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(()=>{
-    try{ localStorage.setItem('dnd_map_state',JSON.stringify(state)); showStatus('Saved'); }
-    catch(e){ showStatus('Storage full — export JSON backup!',true); }
+  saveTimer=setTimeout(()=>{
+    if(!db){ showStatus('DB not ready',true); return; }
+    try{
+      const tx=db.transaction('state','readwrite');
+      tx.objectStore('state').put(state,'current');
+      tx.oncomplete=()=>showStatus('Saved');
+      tx.onerror=()=>showStatus('Save failed!',true);
+    }catch(e){ showStatus('Save failed!',true); }
   },400);
 }
 
-function loadState(){
-  const raw = localStorage.getItem('dnd_map_state');
-  if(!raw) return;
-  try{
-    const s = JSON.parse(raw);
-    state = s;
-    // Migrate old regions that lack new fields
-    state.regions.forEach(r=>{
-      if(!r.npcs) r.npcs = [];
-      if(!r.buildings) r.buildings = [];
-      if(!('coverImage' in r)) r.coverImage = null;
-      if(!('fillOpacity' in r)) r.fillOpacity = 1;
-      if(!('pinSize' in r)) r.pinSize = 1;
-      if(!('roadSize' in r)) r.roadSize = 1;
-    });
-    if(state.imageB64) loadImageFromB64(state.imageB64);
-  }catch(e){}
+async function loadState(){
+  await openDB();
+  return new Promise(resolve=>{
+    const tx=db.transaction('state','readonly');
+    const req=tx.objectStore('state').get('current');
+    req.onsuccess=()=>{
+      let s=req.result;
+      if(!s){
+        // One-time migration from old localStorage saves
+        const raw=localStorage.getItem('dnd_map_state');
+        if(raw){ try{ s=JSON.parse(raw); }catch(e){} }
+      }
+      if(s){
+        state=s;
+        migrateRegions();
+        if(state.imageB64) loadImageFromB64(state.imageB64);
+        else renderSidebar();
+        // Move old localStorage data to IndexedDB then clear it
+        if(localStorage.getItem('dnd_map_state')){
+          saveState();
+          setTimeout(()=>localStorage.removeItem('dnd_map_state'),1000);
+        }
+      } else {
+        renderSidebar();
+      }
+      resolve();
+    };
+    req.onerror=()=>{ renderSidebar(); resolve(); };
+  });
 }
 
 // ============================================================
@@ -1461,19 +1499,39 @@ function updateEntityField(type,entityId,field,value){
   snapshot();
   entity[field]=value;
   saveState();
-  // Only fully rebuild list when structure changes (image upload/remove).
-  // For text fields, update the header name display in-place to keep accordion open.
-  if(field==='image'){
-    renderEntityList(type,arr);
-  } else if(field==='name'){
-    const listEl=document.getElementById(type==='npc'?'npc-list':'building-list');
-    const itemEl=listEl ? listEl.querySelector('[data-id="'+entityId+'"]') : null;
-    if(itemEl){
+  // All field updates are done in-place so the accordion stays open
+  const listEl=document.getElementById(type==='npc'?'npc-list':'building-list');
+  const itemEl=listEl?listEl.querySelector('[data-id="'+entityId+'"]'):null;
+  if(itemEl){
+    if(field==='name'){
       const nameEl=itemEl.querySelector('.entity-name-field');
       if(nameEl) nameEl.textContent=value||('Unnamed '+(type==='npc'?'NPC':'Building'));
     }
+    if(field==='image'){
+      const thumb=itemEl.querySelector('.entity-thumb');
+      const preview=itemEl.querySelector('.entity-img-preview');
+      const btns=itemEl.querySelector('.entity-img-btns');
+      const uploadBtn=btns?.querySelector('.btn.sm:not(.danger)');
+      const removeBtn=btns?.querySelector('.btn.danger');
+      if(value){
+        if(thumb){ thumb.src=value; thumb.classList.add('has-img'); }
+        if(preview){ preview.src=value; preview.classList.add('has-img'); }
+        if(uploadBtn) uploadBtn.textContent='Change Image';
+        if(!removeBtn&&btns){
+          const rb=document.createElement('button'); rb.className='btn sm danger';
+          rb.textContent='Remove Image';
+          rb.onclick=()=>updateEntityField(type,entityId,'image',null);
+          btns.appendChild(rb);
+        }
+      } else {
+        if(thumb){ thumb.src=''; thumb.classList.remove('has-img'); }
+        if(preview){ preview.src=''; preview.classList.remove('has-img'); }
+        if(uploadBtn) uploadBtn.textContent='+ Add Image';
+        if(removeBtn) removeBtn.remove();
+      }
+    }
   }
-  // description / dmNotes: state saved, textarea already shows current value — no DOM rebuild needed
+  // description / dmNotes: textarea already reflects the typed value, no DOM update needed
   document.getElementById(type==='npc'?'npc-count':'bld-count').textContent=arr.length||'';
 }
 
@@ -1556,7 +1614,7 @@ document.getElementById('file-json').onchange=function(){
       if(!imp.regions) throw new Error('Invalid format');
       snapshot(); state.regions=imp.regions; state.nextId=imp.nextId||(state.regions.length+1);
       // migrate
-      state.regions.forEach(r=>{ if(!r.npcs)r.npcs=[]; if(!r.buildings)r.buildings=[]; if(!('coverImage'in r))r.coverImage=null; if(!('fillOpacity'in r))r.fillOpacity=1; if(!('pinSize'in r))r.pinSize=1; if(!('roadSize'in r))r.roadSize=1; });
+      migrateRegions();
       if(imp.imageB64&&!state.imageB64){ state.imageB64=imp.imageB64; loadImageFromB64(imp.imageB64); }
       saveState(); renderSvg(); renderSidebar();
       showStatus('Imported '+imp.regions.length+' regions');
@@ -1936,9 +1994,9 @@ function renderSbList(q){
 // ============================================================
 buildTypeFilter();
 buildPinPalette();
-loadState();
-renderSidebar();
-if(!state.imageB64) noMap.style.display='flex';
+loadState().then(()=>{
+  if(!state.imageB64) noMap.style.display='flex';
+});
 </script>
 </body>
 </html>
