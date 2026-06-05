@@ -281,7 +281,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
             <label>Name</label>
             <input type="text" id="ep-name" placeholder="Location name">
           </div>
-          <div class="field">
+          <div class="field" id="ep-tag-field">
             <label>Type</label>
             <select id="ep-tag"></select>
           </div>
@@ -316,6 +316,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
               <button class="fs-btn btn sm" data-style="bold"><strong>Aa</strong></button>
               <button class="fs-btn btn sm" data-style="bold italic"><strong><em>Aa</em></strong></button>
             </div>
+          </div>
+          <div class="field" id="ep-label-presets" style="display:none">
+            <label>Presets</label>
+            <div class="fs-row" id="label-presets-row"></div>
           </div>
           <button class="btn" id="btn-continue-road" style="display:none;width:100%;margin-bottom:10px">▶ Continue Road from End</button>
           <div class="field">
@@ -429,7 +433,7 @@ const PIN_ICONS = {
 // ============================================================
 // STATE
 // ============================================================
-let state = { imageB64:null, imgW:0, imgH:0, regions:[], nextId:1, scratchpad:'', partyMarker:{active:false,px:.5,py:.5} };
+let state = { imageB64:null, imgW:0, imgH:0, regions:[], nextId:1, scratchpad:'', partyMarker:{active:false,px:.5,py:.5,size:1} };
 let viewport = { x:0, y:0, scale:1 };
 let activeTool = null;
 let drawing = [];
@@ -440,6 +444,7 @@ let undoStack = [], redoStack = [];
 let db = null;
 let moveState = null;
 let partyDrag = null;
+let partyHovered = false;
 let vertexDrag = null;
 const defaultPinSizes = {};
 let defaultRoadSize = 1;
@@ -522,7 +527,8 @@ function openDB(){
 
 function migrateRegions(){
   if(!state.scratchpad) state.scratchpad='';
-  if(!state.partyMarker) state.partyMarker={active:false,px:.5,py:.5};
+  if(!state.partyMarker) state.partyMarker={active:false,px:.5,py:.5,size:1};
+  if(!('size' in state.partyMarker)) state.partyMarker.size=1;
   state.regions.forEach(r=>{
     if(!r.npcs) r.npcs=[];
     if(!r.buildings) r.buildings=[];
@@ -660,6 +666,16 @@ document.addEventListener('drop',e=>{
 mapContainer.addEventListener('wheel',e=>{
   e.preventDefault();
 
+  // Scroll over party marker → resize it (no selection required, it can't be selected)
+  if(partyHovered && !activeTool){
+    const factor=e.deltaY<0?1.1:1/1.1;
+    if(!scrollResizeSnapshotted){ snapshot(); scrollResizeSnapshotted=true; }
+    clearTimeout(scrollResizeTimer);
+    scrollResizeTimer=setTimeout(()=>{ scrollResizeSnapshotted=false; saveState(); },600);
+    state.partyMarker.size=Math.max(0.15,Math.min(6,(state.partyMarker.size??1)*factor));
+    renderSvg(); return;
+  }
+
   // Scroll while drawing a road → resize the road's dot size live
   if(activeTool==='road'){
     e.preventDefault();
@@ -686,7 +702,7 @@ mapContainer.addEventListener('wheel',e=>{
   // Scroll over a pin/road → resize only when it's also selected (prevents accidental resize while zooming)
   if(hoveredId && hoveredId===selectedId && !activeTool && !moveState && !vertexDrag){
     const r=state.regions.find(x=>x.id===hoveredId);
-    if(r && (r.kind==='pin'||r.kind==='road')){
+    if(r && (r.kind==='pin'||r.kind==='road'||r.kind==='label')){
       const factor=e.deltaY<0?1.1:1/1.1;
 
       // One snapshot per continuous scroll gesture
@@ -1351,7 +1367,7 @@ function renderSvg(){
   // Party marker
   if(state.partyMarker?.active){
     const pmx=state.partyMarker.px*W, pmy=state.partyMarker.py*H;
-    const pms=iconSize*1.15;
+    const pms=iconSize*1.15*(state.partyMarker.size??1);
     const ring=makeSvgEl('circle');
     ring.setAttribute('cx',pmx); ring.setAttribute('cy',pmy); ring.setAttribute('r',pms*0.72);
     ring.setAttribute('fill','rgba(255,200,50,0.12)'); ring.setAttribute('stroke','#ffc832');
@@ -1376,6 +1392,8 @@ function renderSvg(){
       partyDrag={msNx:nx,msNy:ny,origPx:state.partyMarker.px,origPy:state.partyMarker.py};
       mapContainer.style.cursor='grabbing';
     });
+    pmhit.addEventListener('mouseenter',()=>{ partyHovered=true; });
+    pmhit.addEventListener('mouseleave',()=>{ partyHovered=false; });
     pmhit.addEventListener('contextmenu',e=>{
       e.preventDefault(); e.stopPropagation();
       if(confirm('Remove party marker?')){ state.partyMarker.active=false; saveState(); renderSvg(); }
@@ -1506,12 +1524,19 @@ function repopulateEditPanel(){
   document.getElementById('ep-opacity-val').textContent=opPct+'%';
   // Show/hide tabs (labels don't have NPCs or buildings)
   const isLabel=r.kind==='label';
+  // Force info tab for labels — prevents NPC/Building pane from showing
+  if(isLabel && activeTab!=='info'){
+    activeTab='info';
+    document.querySelectorAll('.ep-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab==='info'));
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.toggle('active',p.id==='tab-info'));
+  }
   document.querySelectorAll('.ep-tab[data-tab="npcs"],.ep-tab[data-tab="buildings"]').forEach(t=>t.style.display=isLabel?'none':'');
-  // Cover image hidden for labels (they have no portrait)
+  // Cover image and Type field hidden for labels
   document.querySelector('.cover-wrap').style.display=isLabel?'none':'block';
-  // Font style (labels only)
-  const fsfEl=document.getElementById('ep-fontstyle-field');
-  fsfEl.style.display=isLabel?'block':'none';
+  document.getElementById('ep-tag-field').style.display=isLabel?'none':'block';
+  // Font style and presets (labels only)
+  document.getElementById('ep-fontstyle-field').style.display=isLabel?'block':'none';
+  document.getElementById('ep-label-presets').style.display=isLabel?'block':'none';
   if(isLabel){
     const cur=r.fontStyle||'normal';
     document.querySelectorAll('.fs-btn').forEach(b=>b.classList.toggle('active',b.dataset.style===cur));
@@ -1602,6 +1627,31 @@ document.querySelectorAll('.fs-btn').forEach(btn=>{
     editFieldChanged('fontStyle', btn.dataset.style);
   });
 });
+
+// Label presets
+const LABEL_PRESETS=[
+  {label:'🏜 Desert',  color:'#d4a853', fontStyle:'italic',      fontSize:1.3},
+  {label:'🌊 Sea',     color:'#5b9ec9', fontStyle:'italic',      fontSize:1.6},
+  {label:'🌲 Forest',  color:'#6aab6a', fontStyle:'italic',      fontSize:1.1},
+  {label:'⛰ Mountains',color:'#9a9a9a',fontStyle:'bold italic',  fontSize:1.0},
+  {label:'👑 Kingdom', color:'#e8d5a0', fontStyle:'bold',         fontSize:1.8},
+  {label:'🌑 Cursed',  color:'#9b6ddb', fontStyle:'bold italic',  fontSize:1.2},
+];
+(()=>{
+  const row=document.getElementById('label-presets-row');
+  LABEL_PRESETS.forEach(p=>{
+    const btn=document.createElement('button');
+    btn.className='btn sm'; btn.title=p.label; btn.textContent=p.label;
+    btn.style.cssText='font-size:10px;padding:3px 6px;margin-bottom:3px';
+    btn.onclick=()=>{
+      const r=state.regions.find(x=>x.id===selectedId); if(!r||r.kind!=='label') return;
+      snapshot();
+      r.color=p.color; r.fontStyle=p.fontStyle; r.fontSize=p.fontSize;
+      repopulateEditPanel(); saveState(); renderSvg();
+    };
+    row.appendChild(btn);
+  });
+})();
 
 document.getElementById('fog-toggle').onclick=()=>{
   const r=state.regions.find(x=>x.id===selectedId); if(!r) return;
@@ -1885,8 +1935,15 @@ document.getElementById('btn-export-player').onclick=()=>{
 document.addEventListener('keydown',e=>{
   const inInput=['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
   if(e.key==='Escape'){
+    // Close modals first before doing anything else
+    for(const id of ['search-modal','shortcuts-modal']){
+      const el=document.getElementById(id);
+      if(el?.classList.contains('open')){ el.classList.remove('open'); return; }
+    }
+    if(document.getElementById('scratchpad')?.classList.contains('open')){ document.getElementById('scratchpad').classList.remove('open'); return; }
     if(moveState||vertexDrag){ undo(); moveState=null; vertexDrag=null; mapContainer.style.cursor=activeTool?'crosshair':'default'; return; }
     if(activeTool==='polygon'||activeTool==='road'){ drawing=[]; continueRoadId=null; activeTool=null; toolMousedown=null; lastRoadClick=null; mapContainer.style.cursor='default'; updateHint(); renderSvg(); return; }
+    if(activeTool==='label'){ setTool(null); return; }
     setTool(null); selectRegion(null); return;
   }
   if(e.key==='Enter'&&activeTool==='polygon'&&drawing.length>=3){ closePolygon(); return; }
