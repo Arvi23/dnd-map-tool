@@ -111,6 +111,28 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .fog-toggle .knob::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#888;transition:.2s}
 .fog-toggle.fog-on .knob::after{left:16px;background:var(--text-dim)}
 
+/* TERRITORY / KINGDOM */
+.territory-toggle{display:flex;align-items:center;gap:8px;padding:8px;background:var(--surface);border-radius:4px;border:1px solid var(--border);cursor:pointer;margin-bottom:10px}
+.territory-toggle .knob{width:32px;height:18px;background:var(--border);border-radius:9px;position:relative;transition:.2s;flex-shrink:0}
+.territory-toggle.terr-on .knob{background:#5a4824}
+.territory-toggle .knob::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#888;transition:.2s}
+.territory-toggle.terr-on .knob::after{left:16px;background:var(--accent)}
+.terr-mode-row{display:flex;gap:4px}
+.terr-mode-btn{flex:1}
+.terr-mode-btn.active{background:var(--accent);border-color:var(--accent);color:#000}
+.terr-settlements{display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto}
+.terr-settlement-item{display:flex;align-items:center;gap:7px;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:12px;transition:.15s}
+.terr-settlement-item:hover{border-color:var(--accent);color:var(--accent)}
+.terr-empty-msg{font-size:11px;color:var(--text-dim);font-style:italic;padding:2px 0}
+.terr-section-sub{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 4px}
+.ref-field-row{display:flex;gap:6px}
+.ref-field-row input{flex:1;min-width:0}
+.ref-field-row select.ref-picker{flex-shrink:0;width:auto;max-width:150px}
+.ref-chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--accent2);background:rgba(123,104,238,.12);border:1px solid rgba(123,104,238,.35);border-radius:10px;padding:3px 9px;margin-top:6px;cursor:pointer}
+.ref-chip:hover{background:rgba(123,104,238,.22)}
+.ref-chip .ref-unlink{margin-left:2px;color:var(--text-dim);cursor:pointer}
+.ref-chip .ref-unlink:hover{color:var(--danger)}
+
 /* ENTITIES */
 .entity-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
 .entity-item{background:var(--surface);border:1px solid var(--border);border-radius:5px;overflow:hidden}
@@ -271,6 +293,14 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .lb-entity-desc-edit:focus{border-color:var(--accent);background:rgba(255,255,255,.02);outline:none}
 .lb-field-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;display:block}
 .lb-status-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.lb-kingdom-grid{display:flex;flex-wrap:wrap;gap:16px}
+.lb-kingdom-grid>div{flex:1;min-width:140px}
+.lb-settlements-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.lb-settlement-chip{cursor:pointer;transition:.15s}
+.lb-settlement-chip:hover{color:var(--accent)}
+.lb-ref-link{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--accent2);cursor:pointer;margin-top:5px}
+.lb-ref-link:hover{text-decoration:underline}
+.lb-ref-link small{color:var(--text-dim)}
 </style>
 </head>
 <body>
@@ -280,6 +310,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
   <input type="file" id="file-img" accept="image/*" style="display:none">
   <div class="sep"></div>
   <button class="btn btn-icon" id="btn-polygon" title="Polygon (P)">⬡</button>
+  <button class="btn btn-icon" id="btn-territory" title="Kingdom / Territory border (K)">👑</button>
   <button class="btn btn-icon" id="btn-label" title="Text Label (L)">𝖳</button>
   <div class="sep"></div>
   <button class="btn btn-icon" id="btn-undo" title="Undo Ctrl+Z">↩</button>
@@ -378,6 +409,54 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
             <label>Status</label>
             <div class="status-tags-row" id="ep-status-tags"></div>
           </div>
+          <div id="territory-section" style="display:none">
+            <div class="territory-toggle" id="territory-toggle">
+              <div class="knob"></div>
+              <span class="terr-label">Mark as Territory / Kingdom</span>
+            </div>
+            <div id="territory-fields" style="display:none">
+              <div class="field">
+                <label>Border Display</label>
+                <div class="terr-mode-row" id="terr-mode-row">
+                  <button class="btn terr-mode-btn" data-mode="filled" type="button">Filled</button>
+                  <button class="btn terr-mode-btn" data-mode="border" type="button">Border Only</button>
+                  <button class="btn terr-mode-btn" data-mode="hidden" type="button">Hidden</button>
+                </div>
+              </div>
+              <div class="field">
+                <label>Ruler / Leader</label>
+                <div class="ref-field-row">
+                  <input type="text" id="ep-ruler" placeholder="e.g. Queen Iset Veyra">
+                  <select class="ref-picker" id="ep-ruler-pick"><option value="">🔗 Link existing NPC…</option></select>
+                </div>
+                <div class="ref-chip" id="ep-ruler-chip" style="display:none"></div>
+              </div>
+              <div class="field">
+                <label>Government</label>
+                <input type="text" id="ep-government" placeholder="e.g. Hereditary monarchy">
+              </div>
+              <div class="field">
+                <label>Capital</label>
+                <div class="ref-field-row">
+                  <input type="text" id="ep-capital" placeholder="e.g. Highspire">
+                  <select class="ref-picker" id="ep-capital-pick"><option value="">🔗 Link existing location…</option></select>
+                </div>
+                <div class="ref-chip" id="ep-capital-chip" style="display:none"></div>
+              </div>
+              <div class="field">
+                <label>Settlements within these Borders</label>
+                <div class="terr-settlements" id="terr-settlements"></div>
+              </div>
+              <div class="field" id="terr-npcs-field" style="display:none">
+                <label>Notable NPCs in these Lands</label>
+                <div class="terr-settlements" id="terr-npcs"></div>
+              </div>
+              <div class="field" id="terr-buildings-field" style="display:none">
+                <label>Notable Buildings in these Lands</label>
+                <div class="terr-settlements" id="terr-buildings"></div>
+              </div>
+            </div>
+          </div>
           <div class="field">
             <label>Fill Opacity <span class="opacity-val" id="ep-opacity-val">100%</span></label>
             <div class="opacity-row">
@@ -452,6 +531,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
     <table class="shortcut-table">
       <tr><td colspan="2" class="shortcut-section">Drawing</td></tr>
       <tr><td>P</td><td>Polygon tool</td></tr>
+      <tr><td>K</td><td>Kingdom / Territory border tool</td></tr>
       <tr><td>L</td><td>Text label tool</td></tr>
       <tr><td>Enter</td><td>Close polygon / finish road</td></tr>
       <tr><td>Esc</td><td>Cancel drawing / deselect</td></tr>
@@ -515,7 +595,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 // CONSTANTS
 // ============================================================
 const TYPES = ['City','Town','Village','Dungeon','Ruin','Wilderness','POI','Road','Water','Other'];
-const TYPE_COLORS = {City:'#c0392b',Town:'#e67e22',Village:'#f1c40f',Dungeon:'#8e44ad',Ruin:'#95a5a6',Wilderness:'#27ae60',POI:'#2980b9',Road:'#b7950b',Water:'#1a5276',Other:'#556070'};
+const TYPE_COLORS = {City:'#c0392b',Town:'#e67e22',Village:'#f1c40f',Dungeon:'#8e44ad',Ruin:'#95a5a6',Wilderness:'#27ae60',POI:'#2980b9',Road:'#b7950b',Water:'#1a5276',Other:'#556070',Kingdom:'#7b68ee'};
 const STATUS_TAGS={'Quest Active':{color:'#f0b429'},'Visited':{color:'#52c467'},'Cleared':{color:'#7f8c8d'},'Hostile':{color:'#e74c3c'},'Rumoured':{color:'#9b59b6'}};
 const STATUS_TAG_NAMES=Object.keys(STATUS_TAGS);
 
@@ -539,6 +619,7 @@ const PIN_ICONS = {
 let state = { imageB64:null, imgW:0, imgH:0, regions:[], nextId:1, scratchpad:'', partyMarker:{active:false,px:.5,py:.5,size:1} };
 let viewport = { x:0, y:0, scale:1 };
 let activeTool = null;
+let drawingTerritory = false;  // when true, the active 'polygon' tool draws a Kingdom/Territory border
 let drawing = [];
 let selectedId = null;
 let hoveredId = null;
@@ -642,6 +723,16 @@ function migrateRegions(){
     if(!('fontSize' in r)) r.fontSize=1;
     if(!('fontStyle' in r)) r.fontStyle='normal';
     if(!r.statusTags) r.statusTags=[];
+    if(!('isTerritory' in r)) r.isTerritory=false;
+    if(!r.territoryDisplay) r.territoryDisplay='filled';
+    if(!('ruler' in r)) r.ruler='';
+    if(!('government' in r)) r.government='';
+    if(!('capital' in r)) r.capital='';
+    if(!('rulerRef' in r)) r.rulerRef=null;
+    if(!('capitalRef' in r)) r.capitalRef=null;
+    // Fix legacy bug: territories created before the dedicated Kingdom tag existed
+    // could be left with a normal type (e.g. 'City'), which conflicted visually.
+    if(r.isTerritory && r.tag!=='Kingdom'){ r._prevTag=r.tag; r.tag='Kingdom'; r.color=TYPE_COLORS.Kingdom||r.color; }
   });
 }
 
@@ -862,7 +953,7 @@ mapContainer.addEventListener('mousedown',e=>{
     }
     // Right-click while drawing polygon → cancel
     if(e.button===2 && activeTool==='polygon'){
-      drawing=[]; activeTool=null; mapContainer.style.cursor='default'; updateHint(); renderSvg();
+      drawing=[]; activeTool=null; drawingTerritory=false; mapContainer.style.cursor='default'; updateHint(); renderSvg();
       return;
     }
     // Pan (middle or right)
@@ -997,7 +1088,11 @@ function closePolygon(){
   if(drawing.length<3) return;
   snapshot();
   const r=newRegion('polygon'); r.points=drawing.map(p=>[p.nx,p.ny]);
-  state.regions.push(r); drawing=[]; snapClose=false;
+  if(drawingTerritory){
+    r.isTerritory=true; r.tag='Kingdom'; r.color=TYPE_COLORS.Kingdom;
+    r.name='New Kingdom';
+  }
+  state.regions.push(r); drawing=[]; snapClose=false; drawingTerritory=false;
   saveState(); renderSvg(); renderSidebar(); selectRegion(r.id);
 }
 
@@ -1031,26 +1126,31 @@ function newRegion(kind, tag){
   const defaultName = kind==='pin'?t+' Pin':kind==='road'?'Road':kind==='label'?'Label':'Region';
   const ps = kind==='pin' ? (defaultPinSizes[t]??1) : 1;
   const rs = kind==='road' ? defaultRoadSize : 1;
-  return { id:'r'+(state.nextId++), kind, name:defaultName, tag:t, color:kind==='label'?'#e8d5a0':(TYPE_COLORS[t]||TYPE_COLORS.Other), publicLore:'', dmNotes:'', explored:true, coverImage:null, fillOpacity:1, pinSize:ps, roadSize:rs, fontSize:1, fontStyle:'normal', points:[], px:.5, py:.5, npcs:[], buildings:[], statusTags:[] };
+  return { id:'r'+(state.nextId++), kind, name:defaultName, tag:t, color:kind==='label'?'#e8d5a0':(TYPE_COLORS[t]||TYPE_COLORS.Other), publicLore:'', dmNotes:'', explored:true, coverImage:null, fillOpacity:1, pinSize:ps, roadSize:rs, fontSize:1, fontStyle:'normal', points:[], px:.5, py:.5, npcs:[], buildings:[], statusTags:[], isTerritory:false, territoryDisplay:'filled', ruler:'', government:'', capital:'', rulerRef:null, capitalRef:null };
 }
 
-function setTool(tool){
-  activeTool = activeTool===tool ? null : tool;
+function setTool(tool, asTerritory){
+  asTerritory=!!asTerritory;
+  const turningOff = activeTool===tool && (tool!=='polygon' || drawingTerritory===asTerritory);
+  activeTool = turningOff ? null : tool;
+  drawingTerritory = (turningOff || tool!=='polygon') ? false : asTerritory;
   drawing=[]; snapClose=false;
-  document.getElementById('btn-polygon').classList.toggle('active',activeTool==='polygon');
+  document.getElementById('btn-polygon').classList.toggle('active',activeTool==='polygon'&&!drawingTerritory);
+  document.getElementById('btn-territory').classList.toggle('active',activeTool==='polygon'&&drawingTerritory);
   document.getElementById('btn-label').classList.toggle('active',activeTool==='label');
   mapContainer.style.cursor=activeTool?'crosshair':'default';
   updateHint(); renderSvg();
 }
 
 function updateHint(){
-  if(activeTool==='polygon') cursorHint.textContent=drawing.length<3?'Click to add vertices • Esc to cancel':'Click near start or Enter to close • Esc to cancel';
+  if(activeTool==='polygon') cursorHint.textContent=drawing.length<3?(drawingTerritory?'Click to trace the kingdom\'s border • Esc to cancel':'Click to add vertices • Esc to cancel'):'Click near start or Enter to close • Esc to cancel';
   else if(activeTool==='road') cursorHint.textContent=drawing.length<2?'Click to start road • Esc to cancel':'Click to add points • Double-click or Enter to finish • Esc to cancel';
   else if(activeTool==='label') cursorHint.textContent='Click to place text label • Esc to cancel';
   else cursorHint.textContent='';
 }
 
-document.getElementById('btn-polygon').onclick=()=>setTool('polygon');
+document.getElementById('btn-polygon').onclick=()=>setTool('polygon',false);
+document.getElementById('btn-territory').onclick=()=>setTool('polygon',true);
 document.getElementById('btn-label').onclick=()=>setTool('label');
 
 document.getElementById('party-palette-item').addEventListener('dragstart',e=>{
@@ -1213,32 +1313,47 @@ function renderSvg(){
 
   const iconSize = Math.max(20, Math.min(W,H)*0.022);
 
-  for(const r of state.regions){
+  // Territories render first (bottom of stack) so smaller regions/pins inside them remain clickable on top
+  const territories=state.regions.filter(r=>r.kind==='polygon'&&r.isTerritory);
+  const others=state.regions.filter(r=>!(r.kind==='polygon'&&r.isTerritory));
+  for(const r of [...territories,...others]){
     const isSel=r.id===selectedId, isHov=r.id===hoveredId;
     const fOp=(r.fillOpacity??1);
 
     if(r.kind==='polygon'){
       const pts=r.points.map(([nx,ny])=>`${nx*W},${ny*H}`).join(' ');
-      const poly=makeSvgEl('polygon');
-      poly.setAttribute('points',pts);
-      poly.setAttribute('fill',hexAlpha(r.color,fOp*(r.explored?(isSel||isHov?.45:.22):.5)));
-      poly.setAttribute('stroke',r.explored?r.color:'#555');
-      poly.setAttribute('stroke-width',isSel?2.5:1.5);
-      poly.setAttribute('vector-effect','non-scaling-stroke');
-      if(!r.explored) poly.setAttribute('stroke-dasharray','6 3');
-      if(isSel||isHov) poly.setAttribute('filter','url(#glow)');
-      poly.style.cursor='pointer'; poly.dataset.id=r.id;
-      poly.addEventListener('click',onShapeClick);
-      poly.addEventListener('mousedown',e=>{ if(e.button===2){e.stopPropagation();return;} onShapeMousedown(e,r.id); });
-      poly.addEventListener('contextmenu',e=>onShapeContextMenu(e,r.id));
-      poly.addEventListener('mouseenter',()=>{ hoveredId=r.id; renderSvg(); });
-      poly.addEventListener('mouseleave',()=>{ hoveredId=null; renderSvg(); });
-      mapSvg.appendChild(poly);
+      const isTerritory=!!r.isTerritory;
+      const dispMode=isTerritory?(r.territoryDisplay||'filled'):'filled';
+      const showShape=dispMode!=='hidden'||isSel||isHov;
 
-      if(!r.explored){
-        const fog=makeSvgEl('polygon'); fog.setAttribute('points',pts);
-        fog.setAttribute('fill','rgba(15,15,25,0.52)'); fog.setAttribute('pointer-events','none');
-        mapSvg.appendChild(fog);
+      if(showShape){
+        const poly=makeSvgEl('polygon');
+        poly.setAttribute('points',pts);
+        if(dispMode==='border'){
+          poly.setAttribute('fill','transparent');
+          poly.setAttribute('pointer-events','visibleStroke');
+        } else {
+          poly.setAttribute('fill',hexAlpha(r.color,fOp*(r.explored?(isSel||isHov?.45:.22):.5)));
+        }
+        poly.setAttribute('stroke',r.explored?r.color:'#555');
+        poly.setAttribute('stroke-width',isTerritory?(isSel?3:2):(isSel?2.5:1.5));
+        poly.setAttribute('vector-effect','non-scaling-stroke');
+        if(isTerritory) poly.setAttribute('stroke-dasharray',r.explored?'13 6':'6 3');
+        else if(!r.explored) poly.setAttribute('stroke-dasharray','6 3');
+        if(isSel||isHov) poly.setAttribute('filter','url(#glow)');
+        poly.style.cursor='pointer'; poly.dataset.id=r.id;
+        poly.addEventListener('click',onShapeClick);
+        poly.addEventListener('mousedown',e=>{ if(e.button===2){e.stopPropagation();return;} onShapeMousedown(e,r.id); });
+        poly.addEventListener('contextmenu',e=>onShapeContextMenu(e,r.id));
+        poly.addEventListener('mouseenter',()=>{ hoveredId=r.id; renderSvg(); });
+        poly.addEventListener('mouseleave',()=>{ hoveredId=null; renderSvg(); });
+        mapSvg.appendChild(poly);
+
+        if(!r.explored){
+          const fog=makeSvgEl('polygon'); fog.setAttribute('points',pts);
+          fog.setAttribute('fill','rgba(15,15,25,0.52)'); fog.setAttribute('pointer-events','none');
+          mapSvg.appendChild(fog);
+        }
       }
 
       const cx=r.points.reduce((s,[x])=>s+x,0)/r.points.length*W;
@@ -1511,12 +1626,13 @@ function renderSvg(){
 
   // in-progress polygon
   if(activeTool==='polygon'&&drawing.length>0){
+    const previewCol = drawingTerritory ? 'rgba(123,104,238,.9)' : 'rgba(201,168,76,.85)';
     const preview=[...drawing,cursorNorm];
     if(preview.length>=2){
       const pl=makeSvgEl('polyline');
       pl.setAttribute('points',preview.map(p=>`${p.nx*W},${p.ny*H}`).join(' '));
-      pl.setAttribute('fill','none'); pl.setAttribute('stroke','rgba(201,168,76,.85)');
-      pl.setAttribute('stroke-width',1.5); pl.setAttribute('stroke-dasharray','5 3');
+      pl.setAttribute('fill','none'); pl.setAttribute('stroke',previewCol);
+      pl.setAttribute('stroke-width',1.5); pl.setAttribute('stroke-dasharray',drawingTerritory?'13 6':'5 3');
       pl.setAttribute('vector-effect','non-scaling-stroke'); pl.setAttribute('pointer-events','none');
       mapSvg.appendChild(pl);
     }
@@ -1524,8 +1640,8 @@ function renderSvg(){
       const vx=pt.nx*W, vy=pt.ny*H;
       const vc=makeSvgEl('circle');
       vc.setAttribute('cx',vx); vc.setAttribute('cy',vy); vc.setAttribute('r',4);
-      vc.setAttribute('fill',i===0&&snapClose?'gold':'rgba(201,168,76,.9)');
-      vc.setAttribute('stroke',i===0&&snapClose?'#fff':'rgba(201,168,76,.4)');
+      vc.setAttribute('fill',i===0&&snapClose?'gold':previewCol);
+      vc.setAttribute('stroke',i===0&&snapClose?'#fff':'rgba(255,255,255,.35)');
       vc.setAttribute('stroke-width',1.5); vc.setAttribute('vector-effect','non-scaling-stroke');
       vc.setAttribute('pointer-events','none');
       mapSvg.appendChild(vc);
@@ -1607,6 +1723,130 @@ function renderStatusDots(cx,cy,r,W){
   });
 }
 
+function pointInPolygon(px,py,points){
+  let inside=false;
+  for(let i=0,j=points.length-1;i<points.length;j=i++){
+    const [xi,yi]=points[i],[xj,yj]=points[j];
+    if(((yi>py)!==(yj>py))&&(px<(xj-xi)*(py-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+function settlementsInTerritory(territory){
+  return state.regions.filter(r=>{
+    if(r.id===territory.id||r.isTerritory||r.kind==='label'||r.kind==='road') return false;
+    let px,py;
+    if(r.kind==='pin'){ px=r.px; py=r.py; }
+    else if(r.kind==='polygon'){ px=r.points.reduce((s,[x])=>s+x,0)/r.points.length; py=r.points.reduce((s,[,y])=>s+y,0)/r.points.length; }
+    else return false;
+    return pointInPolygon(px,py,territory.points);
+  });
+}
+function renderTerritorySettlements(territory){
+  const wrap=document.getElementById('terr-settlements');
+  wrap.innerHTML='';
+  const inside=settlementsInTerritory(territory);
+  if(!inside.length){
+    wrap.innerHTML='<div class="terr-empty-msg">No locations detected within this border yet.</div>';
+    return;
+  }
+  inside.forEach(s=>{
+    const item=document.createElement('div');
+    item.className='terr-settlement-item';
+    item.innerHTML='<div style="width:9px;height:9px;border-radius:50%;background:'+s.color+';flex-shrink:0"></div><span>'+escHtml(s.name)+'</span><span style="margin-left:auto;color:var(--text-dim);font-size:10px;text-transform:uppercase">'+escHtml(s.tag)+'</span>';
+    item.onclick=()=>selectRegion(s.id);
+    wrap.appendChild(item);
+  });
+  const {npcs,buildings}=entitiesInTerritory(territory);
+  renderTerritoryEntityList('terr-npcs','terr-npcs-field',npcs,'npc');
+  renderTerritoryEntityList('terr-buildings','terr-buildings-field',buildings,'building');
+}
+
+// Collects NPCs/buildings belonging to settlements found within a kingdom's borders
+function entitiesInTerritory(territory){
+  const settlements=settlementsInTerritory(territory);
+  const npcs=[], buildings=[];
+  settlements.forEach(s=>{
+    (s.npcs||[]).forEach(n=>npcs.push({entity:n,parent:s}));
+    (s.buildings||[]).forEach(b=>buildings.push({entity:b,parent:s}));
+  });
+  return {npcs,buildings};
+}
+
+function renderTerritoryEntityList(containerId,fieldId,entries,entityType){
+  const field=document.getElementById(fieldId);
+  const wrap=document.getElementById(containerId);
+  if(!entries.length){ field.style.display='none'; wrap.innerHTML=''; return; }
+  field.style.display='block';
+  wrap.innerHTML='';
+  entries.forEach(({entity,parent})=>{
+    const item=document.createElement('div');
+    item.className='terr-settlement-item';
+    item.innerHTML='<div style="width:9px;height:9px;border-radius:50%;background:'+parent.color+';flex-shrink:0"></div><span>'+escHtml(entity.name||'Unnamed')+'</span><span style="margin-left:auto;color:var(--text-dim);font-size:10px">'+escHtml(parent.name)+'</span>';
+    item.onclick=()=>navigateToEntity(parent.id,entityType,entity.id);
+    wrap.appendChild(item);
+  });
+}
+
+// Selects a region, switches to the NPC/Building tab and opens+scrolls to the given entity
+function navigateToEntity(regionId,entityType,entityId){
+  activeTab = entityType==='building' ? 'buildings' : 'npcs';
+  selectRegion(regionId);
+  document.querySelectorAll('.ep-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===activeTab));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.toggle('active',p.id==='tab-'+activeTab));
+  setTimeout(()=>{
+    const listId=entityType==='building'?'building-list':'npc-list';
+    const item=document.querySelector('#'+listId+' [data-id="'+entityId+'"]');
+    if(item){ item.classList.add('open'); item.scrollIntoView({behavior:'smooth',block:'center'}); }
+  },30);
+}
+
+function allNpcsWithLocation(){
+  const out=[];
+  state.regions.forEach(r=>{
+    if(r.kind==='label') return;
+    (r.npcs||[]).forEach(n=>out.push({npcId:n.id,npcName:n.name||'Unnamed NPC',regionId:r.id,regionName:r.name}));
+  });
+  return out;
+}
+
+function candidateCapitals(excludeId){
+  return state.regions.filter(r=>r.id!==excludeId && !r.isTerritory && (r.kind==='pin'||r.kind==='polygon'));
+}
+
+function renderRefChip(kind){
+  const r=state.regions.find(x=>x.id===selectedId); if(!r) return;
+  const chip=document.getElementById('ep-'+kind+'-chip');
+  const ref = kind==='ruler' ? r.rulerRef : r.capitalRef;
+  if(!ref){ chip.style.display='none'; chip.innerHTML=''; chip.onclick=null; return; }
+  let label, navigate;
+  if(kind==='ruler'){
+    const region=state.regions.find(x=>x.id===ref.regionId);
+    const npc=region?.npcs?.find(n=>n.id===ref.npcId);
+    if(!region||!npc){ chip.style.display='none'; chip.innerHTML=''; return; }
+    label='🔗 '+escHtml(npc.name||'Unnamed NPC')+' <span style="color:var(--text-dim)">— '+escHtml(region.name)+'</span>';
+    navigate=()=>navigateToEntity(region.id,'npc',npc.id);
+  } else {
+    const region=state.regions.find(x=>x.id===ref);
+    if(!region){ chip.style.display='none'; chip.innerHTML=''; return; }
+    label='🔗 '+escHtml(region.name);
+    navigate=()=>selectRegion(region.id);
+  }
+  chip.style.display='inline-flex';
+  chip.innerHTML=label+'<span class="ref-unlink" title="Unlink">✕</span>';
+  chip.onclick=(e)=>{
+    if(e.target.classList.contains('ref-unlink')){ e.stopPropagation(); unlinkRef(kind); return; }
+    navigate();
+  };
+}
+
+function unlinkRef(kind){
+  const r=state.regions.find(x=>x.id===selectedId); if(!r) return;
+  snapshot();
+  if(kind==='ruler') r.rulerRef=null; else r.capitalRef=null;
+  saveState(); repopulateEditPanel();
+  if(document.getElementById('lore-browser').classList.contains('open')) renderLbMain();
+}
+
 // ============================================================
 // SELECTION & EDIT PANEL
 // ============================================================
@@ -1666,7 +1906,7 @@ function repopulateEditPanel(){
   document.querySelectorAll('.ep-tab[data-tab="npcs"],.ep-tab[data-tab="buildings"]').forEach(t=>t.style.display=isLabel?'none':'');
   // Cover image and Type field hidden for labels
   document.querySelector('.cover-wrap').style.display=isLabel?'none':'block';
-  document.getElementById('ep-tag-field').style.display=isLabel?'none':'block';
+  document.getElementById('ep-tag-field').style.display=(isLabel||r.isTerritory)?'none':'block';
   // Font style and presets (labels only)
   document.getElementById('ep-fontstyle-field').style.display=isLabel?'block':'none';
   document.getElementById('ep-label-presets').style.display=isLabel?'block':'none';
@@ -1692,6 +1932,42 @@ function repopulateEditPanel(){
       };
       stRow.appendChild(btn);
     });
+  }
+  // Territory / Kingdom section (polygons only)
+  const terrSection=document.getElementById('territory-section');
+  const isPolygon=r.kind==='polygon';
+  terrSection.style.display=isPolygon?'block':'none';
+  if(isPolygon){
+    document.getElementById('territory-toggle').classList.toggle('terr-on',!!r.isTerritory);
+    document.getElementById('territory-fields').style.display=r.isTerritory?'block':'none';
+    if(r.isTerritory){
+      const mode=r.territoryDisplay||'filled';
+      document.querySelectorAll('#terr-mode-row .terr-mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+      document.getElementById('ep-ruler').value=r.ruler||'';
+      document.getElementById('ep-government').value=r.government||'';
+      document.getElementById('ep-capital').value=r.capital||'';
+      const rulerSel=document.getElementById('ep-ruler-pick');
+      rulerSel.innerHTML='<option value="">🔗 Link existing NPC…</option>';
+      allNpcsWithLocation().forEach(n=>{
+        const o=document.createElement('option');
+        o.value=n.regionId+'::'+n.npcId;
+        o.textContent=n.npcName+' — '+n.regionName;
+        rulerSel.appendChild(o);
+      });
+      rulerSel.value='';
+      const capSel=document.getElementById('ep-capital-pick');
+      capSel.innerHTML='<option value="">🔗 Link existing location…</option>';
+      candidateCapitals(r.id).forEach(loc=>{
+        const o=document.createElement('option');
+        o.value=loc.id;
+        o.textContent=loc.name+' ('+loc.tag+')';
+        capSel.appendChild(o);
+      });
+      capSel.value='';
+      renderRefChip('ruler');
+      renderRefChip('capital');
+      renderTerritorySettlements(r);
+    }
   }
   if(isLabel){
     const cur=r.fontStyle||'normal';
@@ -1751,6 +2027,9 @@ function editFieldChanged(field,value){
   if(field==='roadSize')  r.roadSize=value;
   if(field==='fontSize')  r.fontSize=value;
   if(field==='fontStyle') r.fontStyle=value;
+  if(field==='ruler'){ r.ruler=value; r.rulerRef=null; renderRefChip('ruler'); }
+  if(field==='government') r.government=value;
+  if(field==='capital'){ r.capital=value; r.capitalRef=null; renderRefChip('capital'); }
   saveState(); renderSvg(); renderSidebar();
 }
 
@@ -1760,6 +2039,52 @@ function debounceEdit(f,v){ clearTimeout(editDebounce); editDebounce=setTimeout(
 document.getElementById('ep-name').oninput=e=>debounceEdit('name',e.target.value);
 document.getElementById('ep-lore').oninput=e=>debounceEdit('lore',e.target.value);
 document.getElementById('ep-dm').oninput=e=>debounceEdit('dm',e.target.value);
+document.getElementById('ep-ruler').oninput=e=>debounceEdit('ruler',e.target.value);
+document.getElementById('ep-government').oninput=e=>debounceEdit('government',e.target.value);
+document.getElementById('ep-capital').oninput=e=>debounceEdit('capital',e.target.value);
+document.getElementById('ep-ruler-pick').onchange=e=>{
+  const val=e.target.value; if(!val) return;
+  const [regionId,npcId]=val.split('::');
+  const region=state.regions.find(x=>x.id===regionId);
+  const npc=region?.npcs?.find(n=>n.id===npcId);
+  const r=state.regions.find(x=>x.id===selectedId);
+  if(!r||!region||!npc) return;
+  snapshot();
+  r.ruler=npc.name||''; r.rulerRef={regionId,npcId};
+  saveState(); renderSidebar(); repopulateEditPanel();
+  if(document.getElementById('lore-browser').classList.contains('open')) renderLbMain();
+};
+document.getElementById('ep-capital-pick').onchange=e=>{
+  const val=e.target.value; if(!val) return;
+  const region=state.regions.find(x=>x.id===val);
+  const r=state.regions.find(x=>x.id===selectedId);
+  if(!r||!region) return;
+  snapshot();
+  r.capital=region.name||''; r.capitalRef=val;
+  saveState(); renderSidebar(); repopulateEditPanel();
+  if(document.getElementById('lore-browser').classList.contains('open')) renderLbMain();
+};
+document.getElementById('territory-toggle').onclick=()=>{
+  const r=state.regions.find(x=>x.id===selectedId); if(!r||r.kind!=='polygon') return;
+  snapshot();
+  r.isTerritory=!r.isTerritory;
+  if(r.isTerritory){
+    if(!r.territoryDisplay) r.territoryDisplay='filled';
+    if(r.tag!=='Kingdom'){ r._prevTag=r.tag; r.tag='Kingdom'; r.color=TYPE_COLORS.Kingdom; }
+  } else {
+    r.tag=r._prevTag||'Other'; delete r._prevTag;
+    r.color=TYPE_COLORS[r.tag]||r.color;
+  }
+  saveState(); renderSvg(); repopulateEditPanel(); renderSidebar();
+  if(document.getElementById('lore-browser').classList.contains('open')) renderLbMain();
+};
+document.querySelectorAll('#terr-mode-row .terr-mode-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const r=state.regions.find(x=>x.id===selectedId); if(!r) return;
+    snapshot(); r.territoryDisplay=btn.dataset.mode;
+    saveState(); renderSvg(); repopulateEditPanel();
+  });
+});
 document.getElementById('ep-tag').onchange=e=>editFieldChanged('tag',e.target.value);
 document.getElementById('ep-color').oninput=e=>editFieldChanged('color',e.target.value);
 document.getElementById('ep-opacity').oninput=e=>{
@@ -2099,7 +2424,7 @@ document.addEventListener('keydown',e=>{
     }
     if(document.getElementById('scratchpad')?.classList.contains('open')){ document.getElementById('scratchpad').classList.remove('open'); return; }
     if(moveState||vertexDrag){ undo(); moveState=null; vertexDrag=null; mapContainer.style.cursor=activeTool?'crosshair':'default'; return; }
-    if(activeTool==='polygon'||activeTool==='road'){ drawing=[]; continueRoadId=null; activeTool=null; toolMousedown=null; lastRoadClick=null; mapContainer.style.cursor='default'; updateHint(); renderSvg(); return; }
+    if(activeTool==='polygon'||activeTool==='road'){ drawing=[]; continueRoadId=null; activeTool=null; drawingTerritory=false; toolMousedown=null; lastRoadClick=null; mapContainer.style.cursor='default'; updateHint(); renderSvg(); return; }
     if(activeTool==='label'){ setTool(null); return; }
     setTool(null); selectRegion(null); return;
   }
@@ -2110,7 +2435,8 @@ document.addEventListener('keydown',e=>{
       snapshot(); state.regions=state.regions.filter(x=>x.id!==selectedId);
       selectRegion(null); saveState(); renderSvg(); renderSidebar(); return;
     }
-    if(e.key==='p'||e.key==='P'){ setTool('polygon'); return; }
+    if(e.key==='p'||e.key==='P'){ setTool('polygon',false); return; }
+    if(e.key==='k'||e.key==='K'){ setTool('polygon',true); return; }
     if(e.key==='l'||e.key==='L'){ setTool('label'); return; }
     if(e.key==='b'||e.key==='B'){ toggleLoreBrowser(); return; }
     if(e.key==='?'){ toggleShortcuts(); return; }
@@ -2212,6 +2538,9 @@ function generatePlayerExport(){
     npcs:(r.npcs||[]).map(n=>({id:n.id,name:n.name,description:n.description,image:n.image||null})),
     buildings:(r.buildings||[]).map(b=>({id:b.id,name:b.name,description:b.description,image:b.image||null})),
     statusTags:r.statusTags||[],
+    isTerritory:r.isTerritory||false, territoryDisplay:r.territoryDisplay||'filled',
+    ruler:r.ruler||'', government:r.government||'', capital:r.capital||'',
+    rulerRef:r.rulerRef||null, capitalRef:r.capitalRef||null,
   }));
 
   const data=JSON.stringify({imgW:state.imgW,imgH:state.imgH,imageB64:state.imageB64,regions:exportRegions,partyMarker:state.partyMarker||{active:false}});
@@ -2264,6 +2593,14 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .popup-pane.active{display:block}
 .popup-lore{font-size:13px;color:#c8b090;line-height:1.65;white-space:pre-wrap}
 .fog-msg{color:#6a5a3a;font-style:italic;font-size:13px;padding:8px 0}
+.kingdom-info{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #3a2a0a}
+.kingdom-info div{flex:1;min-width:110px}
+.kingdom-info .ki-label{font-size:10px;color:#7a6a4a;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:2px}
+.kingdom-info .ki-val{font-size:13px;color:#e0c98a}
+.kingdom-settlements{display:flex;flex-wrap:wrap;gap:7px;margin-top:4px;margin-bottom:14px}
+.ks-chip{font-size:11px;color:#c8b090;background:rgba(201,168,76,.08);border:1px solid #4a3a1a;border-radius:10px;padding:3px 10px;cursor:pointer;transition:.15s}
+.ks-chip:hover{border-color:var(--accent);color:var(--accent)}
+.ki-val .ks-chip{font-size:13px;padding:2px 10px;display:inline-block}
 /* entity list in popup */
 .pe-item{border-bottom:1px solid rgba(255,255,255,.06);padding:10px 0}
 .pe-item:last-child{border-bottom:none}
@@ -2344,6 +2681,48 @@ mapContainer.addEventListener('touchmove',e=>{if(e.touches.length===1&&isDrag){v
 mapContainer.addEventListener('touchend',e=>{isDrag=false;if(e.touches.length<2)touches=null;});
 function pdist(e){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;return Math.sqrt(dx*dx+dy*dy);}
 const STATUS_TAG_COLORS={'Quest Active':'#f0b429','Visited':'#52c467','Cleared':'#7f8c8d','Hostile':'#e74c3c','Rumoured':'#9b59b6'};
+function pointInPoly(px,py,points){
+  let inside=false;
+  for(let i=0,j=points.length-1;i<points.length;j=i++){
+    const xi=points[i][0],yi=points[i][1],xj=points[j][0],yj=points[j][1];
+    if(((yi>py)!==(yj>py))&&(px<(xj-xi)*(py-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+function settlementsInTerritoryExp(territory){
+  return MAP_DATA.regions.filter(r=>{
+    if(r.id===territory.id||r.isTerritory||r.kind==='label'||r.kind==='road'||!r.explored) return false;
+    let px,py;
+    if(r.kind==='pin'){ px=r.px; py=r.py; }
+    else if(r.kind==='polygon'){ px=r.points.reduce((s,[x])=>s+x,0)/r.points.length; py=r.points.reduce((s,[,y])=>s+y,0)/r.points.length; }
+    else return false;
+    return pointInPoly(px,py,territory.points);
+  });
+}
+function entitiesInTerritoryExp(territory){
+  const settlements=settlementsInTerritoryExp(territory);
+  const npcs=[], buildings=[];
+  settlements.forEach(s=>{
+    (s.npcs||[]).forEach(n=>npcs.push({entity:n,parent:s}));
+    (s.buildings||[]).forEach(b=>buildings.push({entity:b,parent:s}));
+  });
+  return {npcs,buildings};
+}
+function navigateToPopupEntity(targetId,entityType,entityId,cx,cy){
+  const target=MAP_DATA.regions.find(x=>x.id===targetId);
+  if(!target) return;
+  showPopup(target,cx,cy);
+  if(entityType&&entityId){
+    setTimeout(()=>{
+      const tabBtn=document.querySelector('#popup-tabs .popup-tab[data-tab-id="'+(entityType==='building'?'buildings':'npcs')+'"]');
+      if(tabBtn) tabBtn.click();
+      setTimeout(()=>{
+        const item=document.querySelector('#popup-panes .pe-item[data-id="'+entityId+'"]');
+        if(item){ item.classList.add('open'); item.scrollIntoView({behavior:'smooth',block:'center'}); }
+      },30);
+    },30);
+  }
+}
 function hexA(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return 'rgba('+r+','+g+','+b+','+a+')';}
 function svgEl(t){return document.createElementNS('http://www.w3.org/2000/svg',t);}
 function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -2354,22 +2733,32 @@ function renderMap(){
   defs.innerHTML='<filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
   mapSvg.appendChild(defs);
   const iconSize=Math.max(20,Math.min(W,H)*0.022);
-  MAP_DATA.regions.forEach(r=>{
+  const mapTerritories=MAP_DATA.regions.filter(r=>r.kind==='polygon'&&r.isTerritory);
+  const mapOthers=MAP_DATA.regions.filter(r=>!(r.kind==='polygon'&&r.isTerritory));
+  [...mapTerritories,...mapOthers].forEach(r=>{
     const fOp=r.fillOpacity??1;
     if(r.kind==='polygon'){
       const pts=r.points.map(([x,y])=>x*W+','+y*H).join(' ');
-      const poly=svgEl('polygon');
-      poly.setAttribute('points',pts);
-      poly.setAttribute('fill',hexA(r.color,fOp*(r.explored?0.2:0.5)));
-      poly.setAttribute('stroke',r.explored?r.color:'#444');
-      poly.setAttribute('stroke-width',1.5);poly.setAttribute('vector-effect','non-scaling-stroke');
-      if(!r.explored)poly.setAttribute('stroke-dasharray','6 3');
-      poly.style.cursor='pointer';
-      poly.addEventListener('mouseenter',()=>{poly.setAttribute('fill',hexA(r.color,fOp*(r.explored?0.42:0.6)));poly.setAttribute('filter','url(#glow)');});
-      poly.addEventListener('mouseleave',()=>{poly.setAttribute('fill',hexA(r.color,fOp*(r.explored?0.2:0.5)));poly.removeAttribute('filter');});
-      poly.addEventListener('click',e=>{e.stopPropagation();showPopup(r,e.clientX,e.clientY);});
-      mapSvg.appendChild(poly);
-      if(!r.explored){const f=svgEl('polygon');f.setAttribute('points',pts);f.setAttribute('fill','rgba(10,8,5,0.5)');f.setAttribute('pointer-events','none');mapSvg.appendChild(f);}
+      const isTerritory=!!r.isTerritory;
+      const dispMode=isTerritory?(r.territoryDisplay||'filled'):'filled';
+      if(dispMode!=='hidden'){
+        const poly=svgEl('polygon');
+        poly.setAttribute('points',pts);
+        const baseFill=dispMode==='border'?'transparent':hexA(r.color,fOp*(r.explored?0.2:0.5));
+        const hoverFill=dispMode==='border'?'transparent':hexA(r.color,fOp*(r.explored?0.42:0.6));
+        poly.setAttribute('fill',baseFill);
+        if(dispMode==='border') poly.setAttribute('pointer-events','visibleStroke');
+        poly.setAttribute('stroke',r.explored?r.color:'#444');
+        poly.setAttribute('stroke-width',isTerritory?2:1.5);poly.setAttribute('vector-effect','non-scaling-stroke');
+        if(isTerritory) poly.setAttribute('stroke-dasharray',r.explored?'13 6':'6 3');
+        else if(!r.explored) poly.setAttribute('stroke-dasharray','6 3');
+        poly.style.cursor='pointer';
+        poly.addEventListener('mouseenter',()=>{poly.setAttribute('fill',hoverFill);poly.setAttribute('filter','url(#glow)');});
+        poly.addEventListener('mouseleave',()=>{poly.setAttribute('fill',baseFill);poly.removeAttribute('filter');});
+        poly.addEventListener('click',e=>{e.stopPropagation();showPopup(r,e.clientX,e.clientY);});
+        mapSvg.appendChild(poly);
+        if(!r.explored){const f=svgEl('polygon');f.setAttribute('points',pts);f.setAttribute('fill','rgba(10,8,5,0.5)');f.setAttribute('pointer-events','none');mapSvg.appendChild(f);}
+      }
       const cx=r.points.reduce((s,[x])=>s+x,0)/r.points.length*W;
       const cy=r.points.reduce((s,[,y])=>s+y,0)/r.points.length*H;
       if(r.explored)appendPlayerLabel(cx,cy,r.name,W);
@@ -2517,7 +2906,7 @@ function showPopup(r,cx,cy){
     let firstActive=true;
     tabs.forEach(tab=>{
       if((tab.id==='npcs'&&!r.npcs.length)||(tab.id==='buildings'&&!r.buildings.length)) return;
-      const btn=document.createElement('button');btn.className='popup-tab'+(firstActive?' active':'');
+      const btn=document.createElement('button');btn.className='popup-tab'+(firstActive?' active':'');btn.dataset.tabId=tab.id;
       btn.textContent=tab.label;
       if(tab.count){const sp=document.createElement('span');sp.className='popup-tab-count';sp.textContent=tab.count;btn.appendChild(sp);}
       const pane=document.createElement('div');pane.className='popup-pane'+(firstActive?' active':'');
@@ -2528,11 +2917,58 @@ function showPopup(r,cx,cy){
         btn.classList.add('active');pane.classList.add('active');pane.style.display='block';
       };
       if(tab.id==='info'){
-        pane.innerHTML='<div class="popup-lore">'+escH(r.publicLore||'No lore recorded.')+'</div>';
+        let infoHtml='';
+        if(r.isTerritory){
+          const ki=[];
+          let rulerVal=r.ruler?escH(r.ruler):'', capitalVal=r.capital?escH(r.capital):'';
+          let rulerNav=null, capitalNav=null;
+          if(r.rulerRef){
+            const rg=MAP_DATA.regions.find(x=>x.id===r.rulerRef.regionId);
+            const npc=rg&&rg.explored?(rg.npcs||[]).find(n=>n.id===r.rulerRef.npcId):null;
+            if(rg&&npc){ rulerVal='<span class="ks-chip ki-ref-link" data-nav-target-id="'+rg.id+'" data-nav-entity-id="'+npc.id+'" data-nav-entity-type="npc">'+escH(npc.name||r.ruler)+'</span>'; }
+          }
+          if(r.capitalRef){
+            const cap=MAP_DATA.regions.find(x=>x.id===r.capitalRef);
+            if(cap&&cap.explored){ capitalVal='<span class="ks-chip ki-ref-link" data-nav-target-id="'+cap.id+'">'+escH(cap.name||r.capital)+'</span>'; }
+          }
+          if(rulerVal) ki.push('<div><span class="ki-label">Ruler / Leader</span><span class="ki-val">'+rulerVal+'</span></div>');
+          if(r.government) ki.push('<div><span class="ki-label">Government</span><span class="ki-val">'+escH(r.government)+'</span></div>');
+          if(capitalVal) ki.push('<div><span class="ki-label">Capital</span><span class="ki-val">'+capitalVal+'</span></div>');
+          if(ki.length) infoHtml+='<div class="kingdom-info">'+ki.join('')+'</div>';
+          const settlements=settlementsInTerritoryExp(r);
+          if(settlements.length){
+            infoHtml+='<div class="ki-label" style="margin-bottom:4px">Settlements within these Borders</div>';
+            infoHtml+='<div class="kingdom-settlements">'+settlements.map(s=>'<span class="ks-chip" data-settlement-id="'+s.id+'">'+escH(s.name)+'</span>').join('')+'</div>';
+          }
+          const {npcs:terrNpcs,buildings:terrBuildings}=entitiesInTerritoryExp(r);
+          if(terrNpcs.length){
+            infoHtml+='<div class="ki-label" style="margin-bottom:4px">Notable NPCs in these Lands</div>';
+            infoHtml+='<div class="kingdom-settlements">'+terrNpcs.map(({entity,parent})=>'<span class="ks-chip" data-nav-target-id="'+parent.id+'" data-nav-entity-id="'+entity.id+'" data-nav-entity-type="npc">'+escH(entity.name||'Unnamed')+'</span>').join('')+'</div>';
+          }
+          if(terrBuildings.length){
+            infoHtml+='<div class="ki-label" style="margin-bottom:4px">Notable Buildings in these Lands</div>';
+            infoHtml+='<div class="kingdom-settlements">'+terrBuildings.map(({entity,parent})=>'<span class="ks-chip" data-nav-target-id="'+parent.id+'" data-nav-entity-id="'+entity.id+'" data-nav-entity-type="building">'+escH(entity.name||'Unnamed')+'</span>').join('')+'</div>';
+          }
+        }
+        infoHtml+='<div class="popup-lore">'+escH(r.publicLore||'No lore recorded.')+'</div>';
+        pane.innerHTML=infoHtml;
+        pane.querySelectorAll('[data-settlement-id]').forEach(chip=>{
+          chip.addEventListener('click',e=>{
+            e.stopPropagation();
+            const target=MAP_DATA.regions.find(x=>x.id===chip.dataset.settlementId);
+            if(target) showPopup(target,cx,cy);
+          });
+        });
+        pane.querySelectorAll('[data-nav-target-id]').forEach(chip=>{
+          chip.addEventListener('click',e=>{
+            e.stopPropagation();
+            navigateToPopupEntity(chip.dataset.navTargetId,chip.dataset.navEntityType,chip.dataset.navEntityId,cx,cy);
+          });
+        });
       } else {
         const arr=tab.id==='npcs'?r.npcs:r.buildings;
         arr.forEach(entity=>{
-          const item=document.createElement('div');item.className='pe-item';
+          const item=document.createElement('div');item.className='pe-item';item.dataset.id=entity.id;
           const hdr=document.createElement('div');hdr.className='pe-header';
           const th=document.createElement('img');th.className='pe-thumb'+(entity.image?' has-img':'');
           if(entity.image)th.src=entity.image;
@@ -2711,6 +3147,7 @@ function lbMetaHTML(r,isLabel){
   const chips=[];
   chips.push(r.explored?'<span class="lb-chip">✓ Explored</span>':'<span class="lb-chip" style="color:#888">🌫 Unexplored</span>');
   if(!isLabel){
+    if(r.isTerritory) chips.push('<span class="lb-chip" style="color:var(--accent)">👑 Territory / Kingdom</span>');
     if(r.npcs?.length) chips.push('<span class="lb-chip">👤 '+r.npcs.length+' NPC'+(r.npcs.length!==1?'s':'')+'</span>');
     if(r.buildings?.length) chips.push('<span class="lb-chip">🏛 '+r.buildings.length+' building'+(r.buildings.length!==1?'s':'')+'</span>');
     const kindLabel={polygon:'⬡ Region',pin:'📍 Pin',road:'🛤 Road'}[r.kind]||'';
@@ -2768,6 +3205,45 @@ function renderLbMain(){
     +'<div class="lb-section-heading dm">🔒 DM Notes</div>'
     +'<textarea id="lb-edit-dm" class="lb-edit-dm" placeholder="Private notes, secrets, encounter hooks…">'+escHtml(r.dmNotes||'')+'</textarea>'
     +'</div>';
+  if(!isLabel&&r.isTerritory){
+    let rulerLink='', capitalLink='';
+    if(r.rulerRef){
+      const rg=state.regions.find(x=>x.id===r.rulerRef.regionId);
+      const npc=rg?.npcs?.find(n=>n.id===r.rulerRef.npcId);
+      if(rg&&npc) rulerLink='<span class="lb-ref-link" data-settlement-id="'+rg.id+'" data-nav-entity-id="'+npc.id+'" data-nav-entity-type="npc">🔗&nbsp;'+escHtml(npc.name||'Unnamed NPC')+' <small>— '+escHtml(rg.name)+'</small></span>';
+    }
+    if(r.capitalRef){
+      const cap=state.regions.find(x=>x.id===r.capitalRef);
+      if(cap) capitalLink='<span class="lb-ref-link" data-settlement-id="'+cap.id+'">🔗&nbsp;'+escHtml(cap.name)+'</span>';
+    }
+    html+='<div class="lb-section">'
+      +'<div class="lb-section-heading">👑 Kingdom Details</div>'
+      +'<div class="lb-kingdom-grid">'
+      +'<div><span class="lb-field-label">Ruler / Leader</span><input class="lb-entity-input" id="lb-edit-ruler" value="'+escHtml(r.ruler||'')+'" placeholder="Unknown">'+rulerLink+'</div>'
+      +'<div><span class="lb-field-label">Government</span><input class="lb-entity-input" id="lb-edit-government" value="'+escHtml(r.government||'')+'" placeholder="Unknown"></div>'
+      +'<div><span class="lb-field-label">Capital</span><input class="lb-entity-input" id="lb-edit-capital" value="'+escHtml(r.capital||'')+'" placeholder="Unknown">'+capitalLink+'</div>'
+      +'</div></div>';
+    const settlements=settlementsInTerritory(r);
+    if(settlements.length){
+      html+='<div class="lb-section"><div class="lb-section-heading">Settlements within these Borders ('+settlements.length+')</div>'
+        +'<div class="lb-settlements-row">'
+        +settlements.map(s=>'<span class="lb-chip lb-settlement-chip" data-settlement-id="'+s.id+'">●&nbsp;'+escHtml(s.name)+'</span>').join('')
+        +'</div></div>';
+    }
+    const {npcs:terrNpcs,buildings:terrBuildings}=entitiesInTerritory(r);
+    if(terrNpcs.length){
+      html+='<div class="lb-section"><div class="lb-section-heading">Notable NPCs in these Lands ('+terrNpcs.length+')</div>'
+        +'<div class="lb-settlements-row">'
+        +terrNpcs.map(({entity,parent})=>'<span class="lb-chip lb-settlement-chip" data-settlement-id="'+parent.id+'" data-nav-entity-id="'+entity.id+'" data-nav-entity-type="npc">●&nbsp;'+escHtml(entity.name||'Unnamed')+' <small>— '+escHtml(parent.name)+'</small></span>').join('')
+        +'</div></div>';
+    }
+    if(terrBuildings.length){
+      html+='<div class="lb-section"><div class="lb-section-heading">Notable Buildings in these Lands ('+terrBuildings.length+')</div>'
+        +'<div class="lb-settlements-row">'
+        +terrBuildings.map(({entity,parent})=>'<span class="lb-chip lb-settlement-chip" data-settlement-id="'+parent.id+'" data-nav-entity-id="'+entity.id+'" data-nav-entity-type="building">●&nbsp;'+escHtml(entity.name||'Unnamed')+' <small>— '+escHtml(parent.name)+'</small></span>').join('')
+        +'</div></div>';
+    }
+  }
   if(!isLabel&&r.npcs?.length){
     html+='<div class="lb-section"><div class="lb-section-heading">NPCs ('+r.npcs.length+')</div>';
     r.npcs.forEach(n=>{ html+=lbEntityHTML(n,'npc'); });
@@ -2786,6 +3262,23 @@ function renderLbMain(){
   if(loreEl){ autoResize(loreEl); loreEl.oninput=()=>{ autoResize(loreEl); debounceLb(rid,'publicLore',loreEl.value); }; }
   const dmEl=content.querySelector('#lb-edit-dm');
   if(dmEl){ autoResize(dmEl); dmEl.oninput=()=>{ autoResize(dmEl); debounceLb(rid,'dmNotes',dmEl.value); }; }
+  ['ruler','government','capital'].forEach(f=>{
+    const el=content.querySelector('#lb-edit-'+f);
+    if(el) el.oninput=()=>debounceLb(rid,f,el.value);
+  });
+  content.querySelectorAll('[data-settlement-id]').forEach(chip=>{
+    chip.addEventListener('click',()=>{
+      lbSelectedId=chip.dataset.settlementId; renderLbList(); renderLbMain();
+      const entId=chip.dataset.navEntityId, entType=chip.dataset.navEntityType;
+      if(entId){
+        setTimeout(()=>{
+          const hdr=document.querySelector('.lb-entity-header[data-entity-id="'+entId+'"]');
+          const item=hdr?hdr.parentElement:null;
+          if(item){ item.classList.add('open'); item.scrollIntoView({behavior:'smooth',block:'center'}); }
+        },30);
+      }
+    });
+  });
   content.querySelectorAll('[data-lb-field]').forEach(el=>{
     if(el.tagName==='TEXTAREA') autoResize(el);
     const {entityId,entityType,lbField}=el.dataset;

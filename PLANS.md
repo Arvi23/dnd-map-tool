@@ -59,6 +59,7 @@ The player export is not a file on disk — it is generated at runtime by `gener
 - `renderSvg()` completely clears and redraws the SVG on every call. This is intentional — it is fast enough for typical maps with <200 regions.
 - Do not try to do incremental updates to the SVG. Always call `renderSvg()` after state changes.
 - Glow filter is defined in `<defs>` at the top of every render.
+- **Render order = z-order = click priority** (later elements are on top and capture clicks first via `stopPropagation` in `onShapeClick`). `renderSvg()` splits `state.regions` into `territories` (`kind==='polygon' && isTerritory`, rendered FIRST/bottom) and `others` (rendered after). This means clicking empty space inside a kingdom's border falls through to the territory polygon, while clicking a pin/region inside it selects that smaller shape — no custom hit-testing needed, it's a natural consequence of paint order. Same split exists in the player export's `renderMap()`.
 
 ---
 
@@ -116,8 +117,20 @@ All region kinds share this base shape. Fields that don't apply to a kind are st
 
   // status flags (NOT on labels):
   statusTags: string[]  // subset of STATUS_TAG_NAMES: 'Quest Active','Visited','Cleared','Hostile','Rumoured'
+
+  // Kingdom / Territory (polygons only — see "Kingdom / Territory system" below):
+  isTerritory: boolean,       // flag, NOT a separate `kind` — reuses all polygon machinery
+  territoryDisplay: string,   // 'filled' | 'border' | 'hidden'
+  ruler: string,              // free-text display name (kept in sync when rulerRef is set)
+  government: string,         // free-text, no linking support
+  capital: string,            // free-text display name (kept in sync when capitalRef is set)
+  rulerRef: {regionId, npcId}|null,  // optional link to an existing NPC; cleared if `ruler` is hand-edited
+  capitalRef: string|null,           // optional link to an existing region's id; cleared if `capital` is hand-edited
+  _prevTag: string|undefined  // transient — remembers the tag a region had before being marked a territory, restored on un-marking
 }
 ```
+
+> **The `Kingdom` tag is special.** When `isTerritory` is set, `tag` is forced to `'Kingdom'` (a dedicated entry in `TYPE_COLORS` that deliberately is NOT in the `TYPES` list, so it never appears as a pickable Type for ordinary pins/regions). The Type field is hidden in the edit panel whenever `r.isTerritory` is true. This exists to fix a real bug: territories used to keep whatever mundane type (e.g. `'City'`) they had before being marked, which was confusing and showed contradictory info. `migrateRegions()` normalizes any pre-existing offenders on load (stashing their old tag in `_prevTag` so toggling the territory flag back off restores it).
 
 ### NPC / Building object
 
@@ -156,8 +169,18 @@ All region kinds share this base shape. Fields that don't apply to a kind are st
 | `renderStatusDots(cx,cy,r,W)` | Render colored dot indicators below a region label on the SVG |
 | `buildPinPalette()` | Populate the drag palette in the sidebar |
 | `buildTypeFilter()` | Build the type-chip filter row in sidebar |
-| `setTool(tool)` | Activate a drawing tool ('polygon','label',null) |
-| `closePolygon()` | Finish a polygon being drawn |
+| `setTool(tool, asTerritory)` | Activate a drawing tool ('polygon','label',null). `asTerritory` (polygon only) sets the module-level `drawingTerritory` flag so the Kingdom button can reuse all polygon-drawing code paths — see Drawing Tools |
+| `closePolygon()` | Finish a polygon being drawn; if `drawingTerritory` is set, also marks the new region as a territory (`isTerritory=true, tag='Kingdom'`) |
+| `pointInPolygon(px,py,points)` | Ray-casting point-in-polygon test (normalized coords) |
+| `settlementsInTerritory(territory)` | Returns regions (pins/small polygons, non-territory, non-label/road) whose centroid falls inside the territory's border |
+| `entitiesInTerritory(territory)` | Aggregates `{npcs, buildings}` from every settlement `settlementsInTerritory` finds, each tagged with its parent region for display/navigation |
+| `renderTerritorySettlements(territory)` | Populates the edit panel's settlements/NPCs/buildings lists for the selected territory |
+| `renderTerritoryEntityList(containerId,fieldId,entries,entityType)` | Generic renderer for the territory's aggregated NPC/building chip lists; wires click-to-navigate |
+| `navigateToEntity(regionId,entityType,entityId)` | Selects a region, switches the edit panel to its NPCs/Buildings tab, opens and scrolls to the given entity's accordion card |
+| `allNpcsWithLocation()` | Flat list of every NPC across all regions with parent-location context, used to populate the Ruler picker |
+| `candidateCapitals(excludeId)` | Non-territory pin/polygon regions eligible to be linked as a Capital |
+| `renderRefChip(kind)` | Renders the clickable "🔗 linked to X" chip (with unlink ✕) below the Ruler/Capital fields when `rulerRef`/`capitalRef` is set |
+| `unlinkRef(kind)` | Clears `rulerRef`/`capitalRef` without touching the free-text name |
 | `closeRoad()` | Finish a road being drawn (handles continuation too) |
 | `openLoreBrowser()` | Open the full-screen lore browser overlay (sets lbSelectedId if needed) |
 | `closeLoreBrowser()` | Close the lore browser overlay |
@@ -178,6 +201,12 @@ All region kinds share this base shape. Fields that don't apply to a kind are st
 - Click to place vertices. Near first vertex, snap ring appears (gold circle). Double-click or Enter to close. Right-click cancels.
 - **Point placement uses `mouseup` not `click`** — same reason as roads (see below). The `click` handler on `mapSvg` explicitly gates out `activeTool==='polygon'`. The `mouseup` handler uses the same 10px drift threshold (`dx²+dy² < 100`).
 - `snapClose` flag set in `updateDrawingCursor()`.
+
+### Kingdom / Territory border (`K` key)
+- Its own toolbar button (👑) and shortcut, separate from the plain Polygon tool — drawing a border and then having to remember to flip a toggle was the old (confusing) flow.
+- **Implementation reuses the polygon tool wholesale** rather than duplicating drawing/event-handling code: `setTool('polygon', true)` sets `activeTool='polygon'` plus a module-level `drawingTerritory=true` flag. Every mousedown/mouseup/click/escape/right-click code path that branches on `activeTool==='polygon'` therefore "just works" unchanged for kingdoms too — only `closePolygon()`, `setTool()`, and the live-drawing preview check `drawingTerritory` to add territory-specific behavior (auto-set `isTerritory=true, tag='Kingdom'`, distinct purple dashed preview stroke, button highlight).
+- `drawingTerritory` is reset to `false` on: finishing the polygon, Escape-cancel, right-click-cancel, and switching to a different tool.
+- This is the only supported way to *create* a new kingdom; existing polygons can still be converted via the "Mark as Territory" toggle in the edit panel (e.g. to retro-fit an already-drawn region's border).
 
 ### Road (drag from palette)
 - Dragging Road tile places first point and enters `activeTool='road'`.
@@ -298,6 +327,15 @@ The right-hand edit panel has a drag handle on its left edge. Dragging it resize
 Toggled by the `←` button in the edit panel tab bar, the `📖` button in the toolbar, or the `B` key. Opens a fixed overlay covering the full viewport. Left sidebar shows a searchable, type-filterable list of all regions. Main area shows the selected region's cover image, metadata, status chips, public lore, DM notes, and collapsible NPC/building cards.
 
 **All fields are inline-editable directly in the lore browser** — name, lore, DM notes, entity names and descriptions auto-save with a 350ms debounce back to `state`, the sidebar, and the SVG. Textareas auto-resize to fit content. DM notes are always shown (even when empty) so DMs can type directly without going back to the edit panel.
+
+### Kingdom / Territory system (`r.isTerritory`)
+A specialized layer on top of the polygon tool for marking regions/kingdoms, drawn with the dedicated 👑 Kingdom tool (`K` key — see Drawing Tools) or retro-fitted onto an existing polygon via the "Mark as Territory / Kingdom" toggle in its edit panel.
+
+- **Click-through by design, no custom hit-testing**: territories are rendered first (bottom of the SVG z-order — see "SVG rendering" notes above), so clicking a pin or small region inside a kingdom's border selects *that* shape, while clicking empty space inside the border falls through to select the kingdom itself. This was the user's "crucial" requirement and falls out naturally from paint order + existing `stopPropagation` click handling.
+- **Border display modes** (`territoryDisplay`): `'filled'` (normal polygon fill+stroke), `'border'` (transparent fill, `pointer-events='visibleStroke'` so only the outline is clickable and the interior is fully click-through), `'hidden'` (shape isn't rendered at all — except a faint preview while selected/hovered for editing — but the name label always still renders, an intentional "name without border" cartography effect). All three are respected in both the editor and the player export.
+- **Dedicated `Kingdom` tag** fixes a real bug where territories could retain a mundane type like `'City'`; see the `_prevTag` note in the Region object reference above.
+- **Kingdom Details fields**: Ruler/Leader, Government, Capital — free-text, but Ruler and Capital can additionally be *linked* to an existing NPC or location via `rulerRef`/`capitalRef`. Linked refs render as clickable "🔗 Name" chips (editor edit panel, lore browser, and player popup) that jump straight to the target — for an NPC ruler, this means selecting their home region, switching to its NPCs tab, and auto-expanding+scrolling to their card (`navigateToEntity` / `navigateToPopupEntity`). Hand-editing the free-text field clears the ref (keeps things from silently going stale).
+- **Auto-detected contents**: `settlementsInTerritory()` ray-casts every pin/small-polygon centroid against the border to build a live "Settlements within these Borders" list (click to select), and `entitiesInTerritory()` goes one level deeper, aggregating those settlements' NPCs and Buildings into "Notable NPCs/Buildings in these Lands" chip lists — all clickable, all kept in sync automatically as the map changes (no manual bookkeeping). The player-export equivalents additionally filter out unexplored locations (`!r.explored`) so fog-of-war secrets aren't leaked.
 
 ### Status tags (`r.statusTags`)
 Five colored flags per region: *Quest Active* (gold), *Visited* (green), *Cleared* (grey), *Hostile* (red), *Rumoured* (purple).
