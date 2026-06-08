@@ -3072,29 +3072,29 @@ function svgEl(t){return document.createElementNS('http://www.w3.org/2000/svg',t
 function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function inlineMd(text,resolveLink){
   let s=escH(text);
-  s=s.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,(full,name,disp)=>{
+  s=s.replace(/\\[\\[([^\\]|]+)(?:\\|([^\\]]+))?\\]\\]/g,(full,name,disp)=>{
     const nm=name.trim(), label=escH((disp||name).trim());
     const t=resolveLink?resolveLink(nm):null;
     if(t) return '<span class="md-wikilink resolved" data-region-id="'+t.regionId+'"'+(t.entityId?' data-entity-id="'+t.entityId+'" data-entity-type="'+t.entityType+'"':'')+'>'+label+'</span>';
     return '<span class="md-wikilink">'+label+'</span>';
   });
-  s=s.replace(/\*\*\*([^\n]+?)\*\*\*/g,'<strong><em>$1</em></strong>');
-  s=s.replace(/\*\*([^\n]+?)\*\*/g,'<strong>$1</strong>');
-  s=s.replace(/\*([^\n]+?)\*/g,'<em>$1</em>');
+  s=s.replace(/\\*\\*\\*([^\\n]+?)\\*\\*\\*/g,'<strong><em>$1</em></strong>');
+  s=s.replace(/\\*\\*([^\\n]+?)\\*\\*/g,'<strong>$1</strong>');
+  s=s.replace(/\\*([^\\n]+?)\\*/g,'<em>$1</em>');
   return s;
 }
 function renderMarkdown(src,resolveLink){
   if(!src) return '<p class="md-empty">No lore recorded.</p>';
-  const lines=String(src).replace(/\r\n/g,'\n').split('\n');
+  const lines=String(src).replace(/\\r\\n/g,'\\n').split('\\n');
   let html='',listOpen=false,para=[];
   const flushPara=()=>{ if(para.length){ html+='<p>'+inlineMd(para.join(' '),resolveLink)+'</p>'; para=[]; } };
   const closeList=()=>{ if(listOpen){ html+='</ul>'; listOpen=false; } };
   for(const raw of lines){
     const t=raw.trim();
-    if(/^(?:-{3,}|\*{3,}|_{3,})$/.test(t)){ flushPara(); closeList(); html+='<hr>'; continue; }
-    let m=t.match(/^(#{1,6})\s+(.+)$/);
+    if(/^(?:-{3,}|\\*{3,}|_{3,})$/.test(t)){ flushPara(); closeList(); html+='<hr>'; continue; }
+    let m=t.match(/^(#{1,6})\\s+(.+)$/);
     if(m){ flushPara(); closeList(); const lvl=m[1].length; html+='<h'+lvl+'>'+inlineMd(m[2],resolveLink)+'</h'+lvl+'>'; continue; }
-    m=t.match(/^[-*+]\s+(.+)$/);
+    m=t.match(/^[-*+]\\s+(.+)$/);
     if(m){ flushPara(); if(!listOpen){ html+='<ul>'; listOpen=true; } html+='<li>'+inlineMd(m[1],resolveLink)+'</li>'; continue; }
     if(t===''){ flushPara(); closeList(); continue; }
     para.push(t);
