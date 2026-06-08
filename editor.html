@@ -2910,11 +2910,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 /* POPUP */
 #popup{position:fixed;z-index:200;background:var(--panel-bg);border:2px solid var(--parch-dk);border-radius:6px;width:380px;max-height:80vh;display:none;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.85),inset 0 1px 0 rgba(201,168,76,.15)}
 #popup.visible{display:flex}
+#popup.expanded{width:min(880px,94vw);max-height:88vh;left:50%!important;top:50%!important;transform:translate(-50%,-50%)}
+#popup.expanded #popup-cover{max-height:260px}
+#popup.expanded #popup-name{font-size:25px}
+#popup.expanded .popup-lore,#popup.expanded .pe-desc{font-size:15px;line-height:1.8}
 #popup-cover{width:100%;max-height:160px;object-fit:cover;border-radius:4px 4px 0 0;display:none}
 #popup-cover.has-img{display:block}
-#popup-head{padding:14px 14px 0}
-#popup-close{float:right;background:none;border:none;color:#7a6a4a;cursor:pointer;font-size:18px;line-height:1;margin-left:8px}
-#popup-close:hover{color:var(--accent)}
+#popup-head{padding:14px 14px 0;cursor:grab;-webkit-user-select:none;user-select:none}
+#popup-head.dragging{cursor:grabbing}
+#popup.expanded #popup-head{cursor:default}
+#popup-close,#popup-expand{float:right;background:none;border:none;color:#7a6a4a;cursor:pointer;font-size:17px;line-height:1;margin-left:8px}
+#popup-close:hover,#popup-expand:hover{color:var(--accent)}
 #popup-name{font-size:19px;color:var(--accent);font-variant:small-caps;letter-spacing:.06em}
 #popup-tag{font-size:11px;color:#7a6a4a;text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
 .popup-tabs{display:flex;border-bottom:1px solid #3a2a0a;margin-top:10px;padding:0 14px}
@@ -2981,7 +2987,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 <div id="popup">
   <img id="popup-cover" alt="">
   <div id="popup-head">
-    <button id="popup-close">&#10005;</button>
+    <button id="popup-close" title="Close">&#10005;</button>
+    <button id="popup-expand" title="Expand for comfortable reading">&#10530;</button>
     <div id="popup-name"></div>
     <div id="popup-tag"></div>
     <div id="popup-status-tags" style="display:none;flex-wrap:wrap;gap:5px;margin-top:6px"></div>
@@ -3391,12 +3398,39 @@ function showPopup(r,cx,cy){
     });
   }
   popup.classList.add('visible');
-  const pw=380,ph=400;
-  let left=cx+12,top=cy+12;
-  if(left+pw>window.innerWidth)left=cx-pw-12;
-  if(top+ph>window.innerHeight)top=cy-ph-12;
-  popup.style.left=Math.max(4,left)+'px';popup.style.top=Math.max(48,top)+'px';
+  if(!popup.classList.contains('expanded')){
+    const pw=380,ph=400;
+    let left=cx+12,top=cy+12;
+    if(left+pw>window.innerWidth)left=cx-pw-12;
+    if(top+ph>window.innerHeight)top=cy-ph-12;
+    popup.style.left=Math.max(4,left)+'px';popup.style.top=Math.max(48,top)+'px';
+  }
 }
+// Drag the popup by its header — lets players move it out of the way of the spot they're reading about
+const popupHead=document.getElementById('popup-head');
+let popupDrag=null;
+popupHead.addEventListener('mousedown',e=>{
+  if(e.target.closest('button')||popup.classList.contains('expanded')) return;
+  e.preventDefault();
+  const r=popup.getBoundingClientRect();
+  popupDrag={dx:e.clientX-r.left,dy:e.clientY-r.top};
+  popupHead.classList.add('dragging');
+});
+document.addEventListener('mousemove',e=>{
+  if(!popupDrag) return;
+  const nl=Math.max(4,Math.min(e.clientX-popupDrag.dx,window.innerWidth-60));
+  const nt=Math.max(48,Math.min(e.clientY-popupDrag.dy,window.innerHeight-60));
+  popup.style.left=nl+'px';popup.style.top=nt+'px';
+});
+document.addEventListener('mouseup',()=>{ if(popupDrag){ popupDrag=null; popupHead.classList.remove('dragging'); } });
+// Expand toggle — swaps the compact floating popup for a large centered reader, like the DM's lore browser
+const popupExpand=document.getElementById('popup-expand');
+popupExpand.onclick=e=>{
+  e.stopPropagation();
+  const expanded=popup.classList.toggle('expanded');
+  popupExpand.innerHTML=expanded?'&#10531;':'&#10530;';
+  popupExpand.title=expanded?'Collapse':'Expand for comfortable reading';
+};
 document.getElementById('popup-close').onclick=()=>popup.classList.remove('visible');
 mapContainer.addEventListener('click',()=>popup.classList.remove('visible'));
 document.getElementById('sb-toggle').onclick=()=>sidebar.classList.toggle('open');
