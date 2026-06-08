@@ -38,6 +38,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .palette-item span{font-size:9px;color:var(--text-dim);text-align:center;line-height:1.1;pointer-events:none}
 .palette-item.drag-over{border-color:var(--accent)}
 
+#pending-locations{padding:6px 8px;border-bottom:1px solid var(--border)}
+#pending-locations-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+#pending-locations-list{display:flex;flex-direction:column;gap:4px}
+.pending-loc-item{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:5px 8px;border:1px dashed var(--border);border-radius:4px;cursor:grab;font-size:12px;color:var(--text);user-select:none}
+.pending-loc-item:hover{background:var(--surface);border-color:var(--accent)}
+.pending-loc-item:active{cursor:grabbing}
+.pending-loc-item .plc-remove{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;line-height:1;padding:0 2px}
+.pending-loc-item .plc-remove:hover{color:var(--danger)}
+
 /* VERTEX HANDLES */
 .v-handle{cursor:grab;transition:r .1s}
 .v-handle:hover{r:7}
@@ -191,6 +200,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .modal-close{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:18px}
 .modal-close:hover{color:var(--text)}
 
+/* STUB REFERENCE MODAL */
+#stub-modal .modal-box{position:relative}
+.stub-intro{margin:0;font-size:12px;color:var(--text-dim);line-height:1.5}
+#stub-list{display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:40vh}
+.stub-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;border:1px solid var(--border);border-radius:4px;font-size:13px}
+.stub-row:hover{background:var(--surface)}
+.stub-row select{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 6px;font-size:12px;font-family:inherit;cursor:pointer}
+.stub-actions{display:flex;justify-content:flex-end;gap:8px}
+
 /* LORE SEARCH */
 #search-modal .modal-box{position:relative}
 #search-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px 10px;color:var(--text);font-size:13px;font-family:inherit}
@@ -270,6 +288,29 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .lb-entity-full-img.has-img{display:block}
 .lb-entity-desc{font-size:13px;color:var(--text-dim);line-height:1.65;white-space:pre-wrap}
 
+/* MARKDOWN RENDERING */
+.md-content{cursor:text;white-space:normal}
+.md-content:hover{background:rgba(255,255,255,.02)}
+.md-content h1,.md-content h2,.md-content h3,.md-content h4,.md-content h5,.md-content h6{color:var(--accent);font-weight:600;line-height:1.3;margin:14px 0 6px}
+.md-content h1:first-child,.md-content h2:first-child,.md-content h3:first-child{margin-top:0}
+.md-content h1{font-size:1.25em}
+.md-content h2{font-size:1.12em}
+.md-content h3{font-size:1.02em}
+.md-content p{margin:0 0 10px}
+.md-content p:last-child{margin-bottom:0}
+.md-content ul{margin:0 0 10px;padding-left:22px}
+.md-content li{margin:3px 0}
+.md-content hr{border:none;border-top:1px solid var(--border);margin:14px 0}
+.md-content strong{color:#fff}
+.md-content em{color:inherit}
+.md-empty{color:var(--text-dim);font-style:italic}
+.md-wikilink{color:var(--accent);font-weight:600}
+.md-wikilink.resolved{cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
+.md-wikilink.resolved:hover{color:#fff}
+.md-edit-hint{font-size:10px;color:var(--text-dim);opacity:0;transition:.15s;float:right;text-transform:none;letter-spacing:0}
+.lb-section:hover .md-edit-hint{opacity:.7}
+.md-edit-textarea{background:rgba(255,255,255,.04);border:1px solid var(--accent);border-radius:4px;color:var(--text);font-size:14px;line-height:1.8;width:100%;padding:8px 10px;font-family:inherit;resize:none;overflow:hidden;outline:none;display:block}
+
 /* STATUS TAGS */
 .status-tags-row{display:flex;flex-wrap:wrap;gap:5px}
 .stag-btn{padding:3px 10px;border-radius:12px;border:1px solid var(--border);cursor:pointer;font-size:11px;color:var(--text-dim);background:transparent;transition:.15s;font-family:inherit}
@@ -279,18 +320,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .lb-edit-name{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--accent);font-variant:small-caps;letter-spacing:.06em;font-size:26px;width:100%;padding:2px 0;font-family:inherit;transition:border-color .2s;cursor:text;display:block}
 .lb-edit-name:hover{border-bottom-color:rgba(201,168,76,.3)}
 .lb-edit-name:focus{border-bottom-color:var(--accent);outline:none}
-.lb-edit-lore{background:transparent;border:1px solid transparent;border-radius:4px;color:var(--text);font-size:14px;line-height:1.8;width:100%;padding:6px;font-family:inherit;resize:none;overflow:hidden;transition:border-color .2s,background .2s;cursor:text;display:block}
-.lb-edit-lore:hover{border-color:var(--border);background:rgba(255,255,255,.015)}
-.lb-edit-lore:focus{border-color:var(--accent);background:rgba(255,255,255,.02);outline:none}
-.lb-edit-dm{background:rgba(224,82,82,.07);border:1px solid rgba(224,82,82,.15);border-radius:4px;color:#ffaaaa;font-size:13px;line-height:1.7;width:100%;padding:10px 12px;font-family:inherit;resize:none;overflow:hidden;transition:border-color .2s;display:block}
-.lb-edit-dm:hover{border-color:rgba(224,82,82,.4)}
-.lb-edit-dm:focus{border-color:var(--dm-red);outline:none}
 .lb-entity-input{background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font-size:13px;width:100%;padding:2px 0 4px;font-family:inherit;transition:border-color .2s;display:block;margin-bottom:10px}
 .lb-entity-input:hover{border-bottom-color:var(--border)}
 .lb-entity-input:focus{border-bottom-color:var(--accent);outline:none}
-.lb-entity-desc-edit{background:transparent;border:1px solid transparent;border-radius:4px;color:var(--text-dim);font-size:13px;line-height:1.65;width:100%;padding:4px 6px;font-family:inherit;resize:none;overflow:hidden;transition:border-color .2s,background .2s;display:block}
-.lb-entity-desc-edit:hover{border-color:var(--border);background:rgba(255,255,255,.015)}
-.lb-entity-desc-edit:focus{border-color:var(--accent);background:rgba(255,255,255,.02);outline:none}
 .lb-field-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;display:block}
 .lb-status-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .lb-kingdom-grid{display:flex;flex-wrap:wrap;gap:16px}
@@ -337,6 +369,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
       </div>
       <div id="pin-palette-label" style="margin-top:6px">Drag to place pin</div>
       <div id="pin-palette-grid"></div>
+    </div>
+    <div id="pending-locations" style="display:none">
+      <div id="pending-locations-label">📍 Places to add — drag onto map</div>
+      <div id="pending-locations-list"></div>
     </div>
     <div id="sidebar-header">
       <input type="text" id="search-box" placeholder="Search regions…">
@@ -483,6 +519,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
             <div class="fs-row" id="label-presets-row"></div>
           </div>
           <button class="btn" id="btn-continue-road" style="display:none;width:100%;margin-bottom:10px">▶ Continue Road from End</button>
+          <button class="btn" id="btn-import-lore-md" style="width:100%;margin-bottom:10px" title="A ## DM Notes section becomes private notes; the rest of the note becomes the public lore for this location">📄 Import Lore from Markdown…</button>
           <div class="field">
             <label>Public Lore</label>
             <textarea id="ep-lore" placeholder="What players see when they click this location…"></textarea>
@@ -500,12 +537,14 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
         <div id="tab-npcs" class="tab-pane">
           <div class="entity-list" id="npc-list"></div>
           <button class="add-entity-btn" id="btn-add-npc">+ Add NPC</button>
+          <button class="add-entity-btn" id="btn-import-npc-md" title="Title becomes the name, a ## DM Notes section becomes private notes, the rest becomes the public description">📄 Import NPC from Markdown…</button>
         </div>
 
         <!-- Buildings tab -->
         <div id="tab-buildings" class="tab-pane">
           <div class="entity-list" id="building-list"></div>
           <button class="add-entity-btn" id="btn-add-building">+ Add Building / Location</button>
+          <button class="add-entity-btn" id="btn-import-building-md" title="Title becomes the name, a ## DM Notes section becomes private notes, the rest becomes the public description">📄 Import Building from Markdown…</button>
         </div>
 
       </div>
@@ -553,6 +592,20 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
       <tr><td>B</td><td>Lore Browser</td></tr>
       <tr><td>?</td><td>Keyboard shortcuts</td></tr>
     </table>
+  </div>
+</div>
+
+<!-- Stub Reference Creation Modal (shown after importing a note with [[links]] to entities that don't exist yet) -->
+<div class="modal-backdrop" id="stub-modal">
+  <div class="modal-box">
+    <button class="modal-close" id="stub-close">✕</button>
+    <h2>Create Stub References?</h2>
+    <p id="stub-modal-intro" class="stub-intro"></p>
+    <div id="stub-list"></div>
+    <div class="stub-actions">
+      <button class="btn" id="stub-cancel">Skip All</button>
+      <button class="btn primary" id="stub-confirm">Create Checked</button>
+    </div>
   </div>
 </div>
 
@@ -664,6 +717,89 @@ const statusMsg    = document.getElementById('status-msg');
 // ============================================================
 function makeSvgEl(tag){ return document.createElementNS('http://www.w3.org/2000/svg',tag); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Minimal markdown -> HTML: headers, bold/italic, bullet lists, --- rules, paragraphs, [[wikilinks]].
+// Escapes all text first, so output is always safe to assign via innerHTML.
+function inlineMd(text,resolveLink){
+  let s=escHtml(text);
+  s=s.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,(full,name,disp)=>{
+    const nm=name.trim(), label=escHtml((disp||name).trim());
+    const t=resolveLink?resolveLink(nm):null;
+    if(t) return '<span class="md-wikilink resolved" data-region-id="'+t.regionId+'"'+(t.entityId?' data-entity-id="'+t.entityId+'" data-entity-type="'+t.entityType+'"':'')+'>'+label+'</span>';
+    return '<span class="md-wikilink">'+label+'</span>';
+  });
+  s=s.replace(/\*\*\*([^\n]+?)\*\*\*/g,'<strong><em>$1</em></strong>');
+  s=s.replace(/\*\*([^\n]+?)\*\*/g,'<strong>$1</strong>');
+  s=s.replace(/\*([^\n]+?)\*/g,'<em>$1</em>');
+  return s;
+}
+function renderMarkdown(src,resolveLink){
+  if(!src) return '<p class="md-empty">No lore recorded.</p>';
+  const lines=String(src).replace(/\r\n/g,'\n').split('\n');
+  let html='',listOpen=false,para=[];
+  const flushPara=()=>{ if(para.length){ html+='<p>'+inlineMd(para.join(' '),resolveLink)+'</p>'; para=[]; } };
+  const closeList=()=>{ if(listOpen){ html+='</ul>'; listOpen=false; } };
+  for(const raw of lines){
+    const t=raw.trim();
+    if(/^(?:-{3,}|\*{3,}|_{3,})$/.test(t)){ flushPara(); closeList(); html+='<hr>'; continue; }
+    let m=t.match(/^(#{1,6})\s+(.+)$/);
+    if(m){ flushPara(); closeList(); const lvl=m[1].length; html+='<h'+lvl+'>'+inlineMd(m[2],resolveLink)+'</h'+lvl+'>'; continue; }
+    m=t.match(/^[-*+]\s+(.+)$/);
+    if(m){ flushPara(); if(!listOpen){ html+='<ul>'; listOpen=true; } html+='<li>'+inlineMd(m[1],resolveLink)+'</li>'; continue; }
+    if(t===''){ flushPara(); closeList(); continue; }
+    para.push(t);
+  }
+  flushPara(); closeList();
+  return html||'<p class="md-empty">No lore recorded.</p>';
+}
+// Resolves a [[wikilink]] name against existing regions/NPCs/buildings for cross-reference chips.
+function resolveWikilink(name){
+  const lower=name.trim().toLowerCase();
+  for(const r of state.regions){
+    if(r.kind!=='label'&&r.name&&r.name.trim().toLowerCase()===lower) return {regionId:r.id};
+    for(const n of r.npcs||[]) if(n.name&&n.name.trim().toLowerCase()===lower) return {regionId:r.id,entityId:n.id,entityType:'npc'};
+    for(const b of r.buildings||[]) if(b.name&&b.name.trim().toLowerCase()===lower) return {regionId:r.id,entityId:b.id,entityType:'building'};
+  }
+  return null;
+}
+
+// Parses an Obsidian-style note: strips leading YAML frontmatter, takes the first
+// "# Title" as the name, pulls a "## DM Notes" (or "GM Notes") section out into
+// private notes (subsections stay nested inside it), and treats the remainder as
+// the public description/lore — kept as raw markdown so renderMarkdown can format it.
+function parseMarkdownNote(text){
+  let src=String(text).replace(/\r\n/g,'\n');
+  if(/^---[ \t]*\n/.test(src)){
+    const close=src.indexOf('\n---',4);
+    if(close!==-1){
+      const lineEnd=src.indexOf('\n',close+1);
+      src=src.slice(lineEnd===-1?src.length:lineEnd+1);
+    }
+  }
+  const lines=src.split('\n');
+  let name='', titleIdx=-1;
+  for(let i=0;i<lines.length;i++){
+    const m=lines[i].match(/^#\s+(.+)$/);
+    if(m){ name=m[1].trim(); titleIdx=i; break; }
+  }
+  if(titleIdx>=0) lines.splice(titleIdx,1);
+
+  let inDm=false, dmLevel=0;
+  const bodyLines=[], dmLines=[];
+  for(const line of lines){
+    const m=line.match(/^(#{1,6})\s+(.+)$/);
+    if(m){
+      const level=m[1].length, heading=m[2].trim().toLowerCase();
+      if(/^(?:dm|gm)[\s_-]*notes?$/.test(heading)){ inDm=true; dmLevel=level; continue; }
+      if(inDm&&level<=dmLevel) inDm=false;
+    }
+    (inDm?dmLines:bodyLines).push(line);
+  }
+  const dmNotes=dmLines.join('\n').trim();
+  const description=bodyLines.join('\n').trim().replace(/(?:\n[ \t]*-{3,}[ \t]*)+$/,'').trim();
+  return { name:name||'Untitled', description, dmNotes };
+}
+
 function hexAlpha(hex,a){ const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})`; }
 function uid(){ return 'e'+(state.nextId++); }
 
@@ -1258,6 +1394,36 @@ function buildPinPalette(){
   });
 }
 
+// ============================================================
+// PENDING LOCATIONS — places spotted in imported notes that the DM
+// chose to place on the map themselves (drag the chip onto the map;
+// it becomes a pin pre-named from the reference). Session-only —
+// not persisted, since the [[link]] in the source note is the
+// durable record and resolves the moment the region is created.
+// ============================================================
+let pendingLocations=[];
+function addPendingLocation(name){
+  if(!pendingLocations.some(n=>n.toLowerCase()===name.toLowerCase())) pendingLocations.push(name);
+  renderPendingLocations();
+}
+function renderPendingLocations(){
+  const wrap=document.getElementById('pending-locations');
+  const list=document.getElementById('pending-locations-list');
+  list.innerHTML='';
+  wrap.style.display=pendingLocations.length?'block':'none';
+  pendingLocations.forEach(name=>{
+    const item=document.createElement('div');
+    item.className='pending-loc-item'; item.draggable=true; item.dataset.name=name;
+    item.title='Drag onto the map to place "'+name+'" as a new location';
+    const lbl=document.createElement('span'); lbl.textContent='📍 '+name;
+    const rm=document.createElement('button'); rm.className='plc-remove'; rm.title='Discard'; rm.textContent='✕';
+    rm.onclick=ev=>{ ev.stopPropagation(); pendingLocations=pendingLocations.filter(n=>n!==name); renderPendingLocations(); };
+    item.appendChild(lbl); item.appendChild(rm);
+    item.addEventListener('dragstart',e=>{ e.dataTransfer.setData('text/plain','__pending__:'+name); e.dataTransfer.effectAllowed='copy'; });
+    list.appendChild(item);
+  });
+}
+
 mapContainer.addEventListener('dragover',e=>{
   // Only accept pin palette drags, not image file drops (those have files)
   if(e.dataTransfer.types.includes('text/plain')&&!e.dataTransfer.types.includes('Files')){
@@ -1275,6 +1441,17 @@ mapContainer.addEventListener('drop',e=>{
   if(type==='__party__'){
     state.partyMarker={active:true,px:nx,py:ny};
     saveState(); renderSvg(); return;
+  }
+  if(type.startsWith('__pending__:')){
+    const name=type.slice('__pending__:'.length);
+    snapshot();
+    const r=newRegion('pin','Town'); r.px=nx; r.py=ny; r.name=name;
+    state.regions.push(r); saveState(); renderSvg(); renderSidebar();
+    selectRegion(r.id);
+    pendingLocations=pendingLocations.filter(n=>n!==name);
+    renderPendingLocations();
+    showStatus('Placed "'+name+'" — set its type, shape, and lore in the edit panel');
+    return;
   }
   if(!TYPES.includes(type)) return;
   if(type==='Road'){
@@ -2036,6 +2213,128 @@ function editFieldChanged(field,value){
 let editDebounce=null;
 function debounceEdit(f,v){ clearTimeout(editDebounce); editDebounce=setTimeout(()=>editFieldChanged(f,v),350); }
 
+// Shows the stub-reference modal listing each unresolved name with a per-row
+// classifier — Person / Place / Skip. Resolves with {npcs, places}: npcs get
+// stubbed immediately as empty NPCs in the current region (a person can only
+// "be" wherever the DM puts them, so the current city is a fair guess); places
+// get queued in the sidebar for the DM to drag onto the map themselves, since
+// a location needs real map geometry that can't be guessed from a name alone.
+function openStubModal(names,regionName){
+  return new Promise(resolve=>{
+    const modal=document.getElementById('stub-modal');
+    const list=document.getElementById('stub-list');
+    document.getElementById('stub-modal-intro').textContent=
+      'This note references '+names.length+' '+(names.length===1?'entity':'entities')+' that don\'t exist yet. '+
+      'For each, choose what it is: a Person becomes an empty NPC stub in "'+regionName+'" right away; a Place gets queued '+
+      'in the sidebar so you can drag it onto the map wherever it belongs. Either way the [[link]] resolves and becomes clickable once created.';
+    list.innerHTML='';
+    names.forEach(nm=>{
+      const row=document.createElement('label');
+      row.className='stub-row';
+      const span=document.createElement('span'); span.textContent=nm;
+      const sel=document.createElement('select');
+      sel.innerHTML='<option value="npc" selected>🧑 Person — create NPC stub here</option>'+
+                    '<option value="place">📍 Place — queue to drag onto map</option>'+
+                    '<option value="skip">— Skip</option>';
+      row.appendChild(span); row.appendChild(sel);
+      row.dataset.name=nm;
+      list.appendChild(row);
+    });
+    const confirmBtn=document.getElementById('stub-confirm');
+    const cancelBtn=document.getElementById('stub-cancel');
+    const closeBtn=document.getElementById('stub-close');
+    function finish(result){
+      modal.classList.remove('open');
+      modal.removeEventListener('click',onBackdrop);
+      confirmBtn.removeEventListener('click',onConfirm);
+      cancelBtn.removeEventListener('click',onCancel);
+      closeBtn.removeEventListener('click',onCancel);
+      document.removeEventListener('keydown',onKey,true);
+      resolve(result);
+    }
+    function onConfirm(){
+      const npcs=[],places=[];
+      list.querySelectorAll('.stub-row').forEach(row=>{
+        const val=row.querySelector('select').value, nm=row.dataset.name;
+        if(val==='npc') npcs.push(nm);
+        else if(val==='place') places.push(nm);
+      });
+      finish({npcs,places});
+    }
+    function onCancel(){ finish({npcs:[],places:[]}); }
+    function onBackdrop(e){ if(e.target===modal) onCancel(); }
+    function onKey(e){ if(e.key==='Escape'){ e.stopPropagation(); onCancel(); } }
+    confirmBtn.addEventListener('click',onConfirm);
+    cancelBtn.addEventListener('click',onCancel);
+    closeBtn.addEventListener('click',onCancel);
+    modal.addEventListener('click',onBackdrop);
+    document.addEventListener('keydown',onKey,true);
+    modal.classList.add('open');
+  });
+}
+
+// Scans an imported note's description + DM notes for [[wikilinks]] that don't
+// resolve to an existing region/NPC/building, lets the DM classify each one as
+// a Person (stubbed as an NPC here) or a Place (queued in the sidebar to drag
+// onto the map), and applies those choices. Returns {npcs, places} — the names
+// actually created/queued — for the caller to report back to the DM.
+async function createStubReferences(r,parsed){
+  const text=(parsed.description||'')+'\n'+(parsed.dmNotes||'');
+  const re=/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+  const names=[],seen=new Set();
+  let m;
+  while((m=re.exec(text))){
+    const nm=m[1].trim(),key=nm.toLowerCase();
+    if(!nm||seen.has(key)) continue;
+    seen.add(key);
+    if(!resolveWikilink(nm)) names.push(nm);
+  }
+  if(!names.length) return {npcs:[],places:[]};
+  const picks=await openStubModal(names,r.name);
+  if(picks.npcs.length){
+    picks.npcs.forEach(nm=>r.npcs.push({ id:uid(), name:nm, description:'', dmNotes:'', image:null }));
+    renderEntityList('npc',r.npcs);
+    document.getElementById('npc-count').textContent=r.npcs.length||'';
+  }
+  picks.places.forEach(nm=>addPendingLocation(nm));
+  return picks;
+}
+
+function describeStubResults(picks){
+  const parts=[];
+  if(picks.npcs.length) parts.push('created '+picks.npcs.length+' NPC stub'+(picks.npcs.length===1?'':'s')+' ('+picks.npcs.join(', ')+')');
+  if(picks.places.length) parts.push('queued '+picks.places.length+' place'+(picks.places.length===1?'':'s')+' to drag onto the map ('+picks.places.join(', ')+')');
+  return parts.join(' and ');
+}
+
+// Imports a location/kingdom note's body into this region's Public Lore (and its
+// ## DM Notes section, if any, into DM Notes). Only overwrites a field when the
+// note actually produced content for it, so picking the wrong file can't blank one out.
+function importRegionLoreFromMarkdown(){
+  const r=state.regions.find(x=>x.id===selectedId);
+  if(!r) return;
+  const input=document.createElement('input');
+  input.type='file'; input.accept='.md,.markdown,text/markdown,text/plain';
+  input.onchange=()=>{
+    const file=input.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=async ()=>{
+      const parsed=parseMarkdownNote(String(reader.result||''));
+      snapshot();
+      if(parsed.description) r.publicLore=parsed.description;
+      if(parsed.dmNotes) r.dmNotes=parsed.dmNotes;
+      saveState(); repopulateEditPanel(); renderSidebar(); renderSvg();
+      showStatus('Imported lore from "'+file.name+'" into '+r.name);
+      const picks=await createStubReferences(r,parsed);
+      const desc=describeStubResults(picks);
+      if(desc){ if(picks.npcs.length) saveState(); showStatus('In '+r.name+', '+desc+'.'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+document.getElementById('btn-import-lore-md').onclick=()=>importRegionLoreFromMarkdown();
+
 document.getElementById('ep-name').oninput=e=>debounceEdit('name',e.target.value);
 document.getElementById('ep-lore').oninput=e=>debounceEdit('lore',e.target.value);
 document.getElementById('ep-dm').oninput=e=>debounceEdit('dm',e.target.value);
@@ -2336,8 +2635,41 @@ function addEntity(type){
   const last=list.lastChild; if(last) last.classList.add('open');
 }
 
+// Opens a single .md file picker, parses it as an Obsidian-style note, and creates
+// a new NPC/Building scoped to the currently-selected region (so importing while
+// viewing a city's NPC tab puts the NPC in that city — no cross-region picking needed).
+function importEntityFromMarkdown(type){
+  const r=state.regions.find(x=>x.id===selectedId);
+  if(!r){ alert('Select a region first — the imported entity is added to it.'); return; }
+  const input=document.createElement('input');
+  input.type='file'; input.accept='.md,.markdown,text/markdown,text/plain';
+  input.onchange=()=>{
+    const file=input.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=async ()=>{
+      const parsed=parseMarkdownNote(String(reader.result||''));
+      snapshot();
+      const entity={ id:uid(), name:parsed.name, description:parsed.description, dmNotes:parsed.dmNotes, image:null };
+      const arr=type==='npc'?r.npcs:r.buildings;
+      arr.push(entity);
+      saveState(); renderEntityList(type,arr);
+      document.getElementById(type==='npc'?'npc-count':'bld-count').textContent=arr.length||'';
+      const list=document.getElementById(type==='npc'?'npc-list':'building-list');
+      const last=list.lastChild; if(last) last.classList.add('open');
+      showStatus('Imported "'+parsed.name+'" into '+r.name+(parsed.dmNotes?' (with DM notes)':''));
+      const picks=await createStubReferences(r,parsed);
+      const desc=describeStubResults(picks);
+      if(desc){ if(picks.npcs.length) saveState(); showStatus('In '+r.name+', '+desc+'.'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
 document.getElementById('btn-add-npc').onclick=()=>addEntity('npc');
 document.getElementById('btn-add-building').onclick=()=>addEntity('building');
+document.getElementById('btn-import-npc-md').onclick=()=>importEntityFromMarkdown('npc');
+document.getElementById('btn-import-building-md').onclick=()=>importEntityFromMarkdown('building');
 
 document.getElementById('btn-continue-road').onclick=()=>{
   const r=state.regions.find(x=>x.id===selectedId);
@@ -2591,7 +2923,19 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .popup-tab-count{font-size:10px;background:#2a1a05;border-radius:8px;padding:1px 5px;margin-left:3px}
 .popup-pane{padding:12px 14px;overflow-y:auto;display:none;flex:1}
 .popup-pane.active{display:block}
-.popup-lore{font-size:13px;color:#c8b090;line-height:1.65;white-space:pre-wrap}
+.popup-lore{font-size:13px;color:#c8b090;line-height:1.65}
+.popup-lore h1,.popup-lore h2,.popup-lore h3,.popup-lore h4,.pe-desc h1,.pe-desc h2,.pe-desc h3,.pe-desc h4{color:var(--accent);font-weight:600;line-height:1.3;margin:12px 0 5px;font-variant:small-caps;letter-spacing:.04em}
+.popup-lore h1:first-child,.popup-lore h2:first-child,.popup-lore h3:first-child,.pe-desc h1:first-child,.pe-desc h2:first-child,.pe-desc h3:first-child{margin-top:0}
+.popup-lore p,.pe-desc p{margin:0 0 9px}
+.popup-lore p:last-child,.pe-desc p:last-child{margin-bottom:0}
+.popup-lore ul,.pe-desc ul{margin:0 0 9px;padding-left:20px}
+.popup-lore li,.pe-desc li{margin:2px 0}
+.popup-lore hr,.pe-desc hr{border:none;border-top:1px solid #3a2a0a;margin:12px 0}
+.popup-lore strong,.pe-desc strong{color:#e8d5a0}
+.md-empty{color:#6a5a3a;font-style:italic}
+.md-wikilink{color:var(--accent);font-weight:600}
+.md-wikilink.resolved{cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
+.md-wikilink.resolved:hover{color:#fff}
 .fog-msg{color:#6a5a3a;font-style:italic;font-size:13px;padding:8px 0}
 .kingdom-info{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #3a2a0a}
 .kingdom-info div{flex:1;min-width:110px}
@@ -2614,7 +2958,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .pe-item.open .pe-body{display:block}
 .pe-full-img{width:100%;max-height:180px;object-fit:cover;border-radius:3px;margin-bottom:8px;display:none}
 .pe-full-img.has-img{display:block}
-.pe-desc{font-size:12px;color:#b8a080;line-height:1.6;white-space:pre-wrap}
+.pe-desc{font-size:12px;color:#b8a080;line-height:1.6}
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-thumb{background:#4a3a1a;border-radius:2px}
 </style>
@@ -2726,6 +3070,59 @@ function navigateToPopupEntity(targetId,entityType,entityId,cx,cy){
 function hexA(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return 'rgba('+r+','+g+','+b+','+a+')';}
 function svgEl(t){return document.createElementNS('http://www.w3.org/2000/svg',t);}
 function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function inlineMd(text,resolveLink){
+  let s=escH(text);
+  s=s.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,(full,name,disp)=>{
+    const nm=name.trim(), label=escH((disp||name).trim());
+    const t=resolveLink?resolveLink(nm):null;
+    if(t) return '<span class="md-wikilink resolved" data-region-id="'+t.regionId+'"'+(t.entityId?' data-entity-id="'+t.entityId+'" data-entity-type="'+t.entityType+'"':'')+'>'+label+'</span>';
+    return '<span class="md-wikilink">'+label+'</span>';
+  });
+  s=s.replace(/\*\*\*([^\n]+?)\*\*\*/g,'<strong><em>$1</em></strong>');
+  s=s.replace(/\*\*([^\n]+?)\*\*/g,'<strong>$1</strong>');
+  s=s.replace(/\*([^\n]+?)\*/g,'<em>$1</em>');
+  return s;
+}
+function renderMarkdown(src,resolveLink){
+  if(!src) return '<p class="md-empty">No lore recorded.</p>';
+  const lines=String(src).replace(/\r\n/g,'\n').split('\n');
+  let html='',listOpen=false,para=[];
+  const flushPara=()=>{ if(para.length){ html+='<p>'+inlineMd(para.join(' '),resolveLink)+'</p>'; para=[]; } };
+  const closeList=()=>{ if(listOpen){ html+='</ul>'; listOpen=false; } };
+  for(const raw of lines){
+    const t=raw.trim();
+    if(/^(?:-{3,}|\*{3,}|_{3,})$/.test(t)){ flushPara(); closeList(); html+='<hr>'; continue; }
+    let m=t.match(/^(#{1,6})\s+(.+)$/);
+    if(m){ flushPara(); closeList(); const lvl=m[1].length; html+='<h'+lvl+'>'+inlineMd(m[2],resolveLink)+'</h'+lvl+'>'; continue; }
+    m=t.match(/^[-*+]\s+(.+)$/);
+    if(m){ flushPara(); if(!listOpen){ html+='<ul>'; listOpen=true; } html+='<li>'+inlineMd(m[1],resolveLink)+'</li>'; continue; }
+    if(t===''){ flushPara(); closeList(); continue; }
+    para.push(t);
+  }
+  flushPara(); closeList();
+  return html||'<p class="md-empty">No lore recorded.</p>';
+}
+// Resolves [[wikilinks]] to clickable cross-references; skips unexplored locations so fog-of-war secrets stay hidden.
+function resolveWikilink(name){
+  const lower=name.trim().toLowerCase();
+  for(const r of MAP_DATA.regions){
+    if(!r.explored) continue;
+    if(r.kind!=='label'&&r.name&&r.name.trim().toLowerCase()===lower) return {regionId:r.id};
+    for(const n of r.npcs||[]) if(n.name&&n.name.trim().toLowerCase()===lower) return {regionId:r.id,entityId:n.id,entityType:'npc'};
+    for(const b of r.buildings||[]) if(b.name&&b.name.trim().toLowerCase()===lower) return {regionId:r.id,entityId:b.id,entityType:'building'};
+  }
+  return null;
+}
+function wireWikilinks(container,cx,cy){
+  container.querySelectorAll('.md-wikilink.resolved').forEach(chip=>{
+    chip.addEventListener('click',e=>{
+      e.stopPropagation();
+      const entId=chip.dataset.entityId, entType=chip.dataset.entityType;
+      if(entId) navigateToPopupEntity(chip.dataset.regionId,entType,entId,cx,cy);
+      else { const target=MAP_DATA.regions.find(x=>x.id===chip.dataset.regionId); if(target) showPopup(target,cx,cy); }
+    });
+  });
+}
 function renderMap(){
   while(mapSvg.firstChild)mapSvg.removeChild(mapSvg.firstChild);
   const W=MAP_DATA.imgW,H=MAP_DATA.imgH;
@@ -2950,7 +3347,7 @@ function showPopup(r,cx,cy){
             infoHtml+='<div class="kingdom-settlements">'+terrBuildings.map(({entity,parent})=>'<span class="ks-chip" data-nav-target-id="'+parent.id+'" data-nav-entity-id="'+entity.id+'" data-nav-entity-type="building">'+escH(entity.name||'Unnamed')+'</span>').join('')+'</div>';
           }
         }
-        infoHtml+='<div class="popup-lore">'+escH(r.publicLore||'No lore recorded.')+'</div>';
+        infoHtml+='<div class="popup-lore">'+renderMarkdown(r.publicLore,resolveWikilink)+'</div>';
         pane.innerHTML=infoHtml;
         pane.querySelectorAll('[data-settlement-id]').forEach(chip=>{
           chip.addEventListener('click',e=>{
@@ -2965,6 +3362,7 @@ function showPopup(r,cx,cy){
             navigateToPopupEntity(chip.dataset.navTargetId,chip.dataset.navEntityType,chip.dataset.navEntityId,cx,cy);
           });
         });
+        wireWikilinks(pane,cx,cy);
       } else {
         const arr=tab.id==='npcs'?r.npcs:r.buildings;
         arr.forEach(entity=>{
@@ -2981,7 +3379,8 @@ function showPopup(r,cx,cy){
           const fi=document.createElement('img');fi.className='pe-full-img'+(entity.image?' has-img':'');
           if(entity.image)fi.src=entity.image;
           body.appendChild(fi);
-          const desc=document.createElement('div');desc.className='pe-desc';desc.textContent=entity.description||'';
+          const desc=document.createElement('div');desc.className='pe-desc';desc.innerHTML=renderMarkdown(entity.description,resolveWikilink);
+          wireWikilinks(desc,cx,cy);
           body.appendChild(desc);
           hdr.onclick=()=>item.classList.toggle('open');
           item.appendChild(hdr);item.appendChild(body);
@@ -3138,6 +3537,46 @@ function debounceLbEntity(regionId,entityType,entityId,field,value){
   lbEntityDebounces[key]=setTimeout(()=>lbEntityChanged(regionId,entityType,entityId,field,value),350);
 }
 
+// Click-to-edit markdown field: renders formatted markdown by default; clicking it
+// (outside a wikilink chip) swaps in a raw-text textarea, and blur commits + re-renders.
+// One commit per edit session (not per keystroke) — keeps the undo stack sane.
+function wireMdField(el,getValue,commit,resolveLink,placeholder){
+  function renderView(){
+    const val=getValue();
+    el.innerHTML = val ? renderMarkdown(val,resolveLink) : '<p class="md-empty">'+escHtml(placeholder||'No content.')+'</p>';
+    el.querySelectorAll('.md-wikilink.resolved').forEach(chip=>{
+      chip.addEventListener('click',ev=>{
+        ev.stopPropagation();
+        navigateLbWikilink(chip.dataset.regionId,chip.dataset.entityId,chip.dataset.entityType);
+      });
+    });
+    el.onclick=startEdit;
+  }
+  function startEdit(ev){
+    if(ev.target.closest('.md-wikilink')) return;
+    el.onclick=null;
+    const ta=document.createElement('textarea');
+    ta.className='md-edit-textarea';
+    ta.placeholder=placeholder||'';
+    ta.value=getValue();
+    el.innerHTML=''; el.appendChild(ta);
+    autoResize(ta); ta.focus();
+    ta.oninput=()=>autoResize(ta);
+    ta.onblur=()=>{ commit(ta.value); renderView(); };
+  }
+  renderView();
+}
+function navigateLbWikilink(regionId,entityId,entityType){
+  lbSelectedId=regionId; renderLbList(); renderLbMain();
+  if(entityId){
+    setTimeout(()=>{
+      const hdr=document.querySelector('#lb-content .lb-entity-header[data-entity-id="'+entityId+'"]');
+      const item=hdr?hdr.parentElement:null;
+      if(item){ item.classList.add('open'); item.scrollIntoView({behavior:'smooth',block:'center'}); }
+    },30);
+  }
+}
+
 function lbMetaHTML(r,isLabel){
   let h='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">';
   h+='<div style="width:13px;height:13px;border-radius:50%;background:'+r.color+';flex-shrink:0;margin-top:6px"></div>';
@@ -3177,7 +3616,7 @@ function lbEntityHTML(entity,entityType){
     +'<span class="lb-field-label">Name</span>'
     +'<input class="lb-entity-input" data-lb-field="name" data-entity-id="'+entity.id+'" data-entity-type="'+entityType+'" value="'+escHtml(entity.name||'')+'" placeholder="Unnamed">'
     +'<span class="lb-field-label">Description</span>'
-    +'<textarea class="lb-entity-desc-edit" data-lb-field="description" data-entity-id="'+entity.id+'" data-entity-type="'+entityType+'" placeholder="No description.">'+escHtml(entity.description||'')+'</textarea>'
+    +'<div class="md-content" data-md-entity-id="'+entity.id+'" data-md-entity-type="'+entityType+'"></div>'
     +'</div>'
     +'</div>';
 }
@@ -3198,12 +3637,12 @@ function renderLbMain(){
     html+='<div class="lb-header-flat">'+lbMetaHTML(r,isLabel)+'</div>';
   }
   html+='<div class="lb-section">'
-    +'<div class="lb-section-heading">Public Lore</div>'
-    +'<textarea id="lb-edit-lore" class="lb-edit-lore" placeholder="What players see when they click this location…">'+escHtml(r.publicLore||'')+'</textarea>'
+    +'<div class="lb-section-heading">Public Lore<span class="md-edit-hint">click to edit · markdown supported</span></div>'
+    +'<div class="md-content" id="lb-md-lore"></div>'
     +'</div>';
   html+='<div class="lb-section">'
-    +'<div class="lb-section-heading dm">🔒 DM Notes</div>'
-    +'<textarea id="lb-edit-dm" class="lb-edit-dm" placeholder="Private notes, secrets, encounter hooks…">'+escHtml(r.dmNotes||'')+'</textarea>'
+    +'<div class="lb-section-heading dm">🔒 DM Notes<span class="md-edit-hint">click to edit · markdown supported</span></div>'
+    +'<div class="md-content lb-dm-box" id="lb-md-dm"></div>'
     +'</div>';
   if(!isLabel&&r.isTerritory){
     let rulerLink='', capitalLink='';
@@ -3258,10 +3697,10 @@ function renderLbMain(){
   const rid=r.id;
   const nameEl=content.querySelector('#lb-edit-name');
   if(nameEl) nameEl.oninput=()=>debounceLb(rid,'name',nameEl.value);
-  const loreEl=content.querySelector('#lb-edit-lore');
-  if(loreEl){ autoResize(loreEl); loreEl.oninput=()=>{ autoResize(loreEl); debounceLb(rid,'publicLore',loreEl.value); }; }
-  const dmEl=content.querySelector('#lb-edit-dm');
-  if(dmEl){ autoResize(dmEl); dmEl.oninput=()=>{ autoResize(dmEl); debounceLb(rid,'dmNotes',dmEl.value); }; }
+  const loreField=content.querySelector('#lb-md-lore');
+  if(loreField) wireMdField(loreField,()=>state.regions.find(x=>x.id===rid)?.publicLore||'',v=>lbFieldChanged(rid,'publicLore',v),resolveWikilink,'What players see when they click this location…');
+  const dmField=content.querySelector('#lb-md-dm');
+  if(dmField) wireMdField(dmField,()=>state.regions.find(x=>x.id===rid)?.dmNotes||'',v=>lbFieldChanged(rid,'dmNotes',v),resolveWikilink,'Private notes, secrets, encounter hooks…');
   ['ruler','government','capital'].forEach(f=>{
     const el=content.querySelector('#lb-edit-'+f);
     if(el) el.oninput=()=>debounceLb(rid,f,el.value);
@@ -3279,10 +3718,19 @@ function renderLbMain(){
       }
     });
   });
-  content.querySelectorAll('[data-lb-field]').forEach(el=>{
-    if(el.tagName==='TEXTAREA') autoResize(el);
+  content.querySelectorAll('input[data-lb-field]').forEach(el=>{
     const {entityId,entityType,lbField}=el.dataset;
-    el.oninput=()=>{ if(el.tagName==='TEXTAREA') autoResize(el); debounceLbEntity(rid,entityType,entityId,lbField,el.value); };
+    el.oninput=()=>debounceLbEntity(rid,entityType,entityId,lbField,el.value);
+  });
+  content.querySelectorAll('[data-md-entity-id]').forEach(el=>{
+    const {mdEntityId,mdEntityType}=el.dataset;
+    const arr=mdEntityType==='npc'?r.npcs:r.buildings;
+    const entity=arr&&arr.find(x=>x.id===mdEntityId);
+    if(!entity) return;
+    wireMdField(el,
+      ()=>{ const e2=arr.find(x=>x.id===mdEntityId); return e2?e2.description||'':''; },
+      v=>lbEntityChanged(rid,mdEntityType,mdEntityId,'description',v),
+      resolveWikilink,'No description.');
   });
   content.querySelectorAll('.lb-entity-header').forEach(hdr=>{
     hdr.addEventListener('click',()=>hdr.parentElement.classList.toggle('open'));

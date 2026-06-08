@@ -82,6 +82,8 @@ Every region, road, and pin has:
 - **Public Lore** — visible to players in the export
 - **DM Notes** — shown only in the editor, never exported (marked with 🔒)
 
+All lore, notes, and descriptions support **Markdown** — headers, **bold**/*italic*, lists, and `[[wikilinks]]` to other regions, NPCs, or buildings. Fields render as formatted text wherever they appear (edit panel, lore browser, player popups); click a rendered field to flip it back to a plain-text editor, and it re-renders when you click away. A `[[wikilink]]` becomes a clickable jump straight to its target the moment a matching name exists anywhere in the world.
+
 **NPCs tab** — Add as many NPCs as needed, each with name, portrait image, public description, and private DM notes.
 
 **Buildings tab** — Same structure for inns, shops, temples, dungeons, etc.
@@ -92,6 +94,26 @@ Every region, road, and pin has:
 - Search regions by name
 - Filter by type chip (City, Town, Dungeon, etc.)
 - Click any entry to select it on the map
+- **📍 Places to add** — appears when an imported note mentions a place that doesn't exist yet; drag a chip straight onto the map to drop a pre-named pin there (see Importing from Markdown below)
+
+### Importing from Markdown (Obsidian-friendly)
+
+Already keep your world in Obsidian or another Markdown notebook? Skip retyping it:
+
+| Button | Where | What it does |
+|--------|-------|--------------|
+| **Import from Markdown** (NPCs tab) | NPC edit panel | Creates a new NPC from a `.md` file's title and body |
+| **Import from Markdown** (Buildings tab) | Building edit panel | Creates a new building the same way |
+| **Import Lore from Markdown** (Info tab) | Region edit panel | Overwrites the region's Public Lore / DM Notes from a `.md` file |
+
+The importer reads the file's title/heading as the name, the main body as Public Lore, and a "DM Notes"-style section as private notes — a typical Obsidian export drops in with no reformatting.
+
+**Auto-detecting new references** — if the imported note contains `[[wikilinks]]` to entities that don't exist in your world yet, a dialog lets you classify each one:
+- **🧑 Person** — stubbed immediately as an empty NPC in the region you imported into, ready to flesh out
+- **📍 Place** — too important to guess a location for; instead it's queued in the sidebar's "Places to add" list as a chip you can drag onto the map exactly where it belongs
+- **— Skip** — leave it alone; the link will resolve automatically once you create a matching entity by hand
+
+Either path makes the original `[[link]]` clickable the instant a matching name exists.
 
 ### Undo / Redo
 - `Ctrl+Z` — undo

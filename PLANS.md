@@ -23,7 +23,7 @@ This is a **lore and immersion tool** for tabletop RPG dungeon masters. The prim
 ## Repository Layout
 
 ```
-editor.html     — The entire DM editor (~2800 lines, single file)
+editor.html     — The entire DM editor (~3750 lines, single file)
 README.md       — User-facing documentation
 PLANS.md        — This file (agent handoff)
 ```
@@ -192,6 +192,18 @@ All region kinds share this base shape. Fields that don't apply to a kind are st
 | `debounceLb(regionId,field,value)` | 350ms debounced write of a region field back to state |
 | `lbEntityChanged(...)` | Commit an entity field edit to state and sync visible DOM |
 | `debounceLbEntity(...)` | 350ms debounced version of lbEntityChanged |
+| `renderMarkdown(src)` | Convert a markdown string (headers, bold/italic, lists, wikilinks) to sanitized HTML for lore/notes display |
+| `inlineMd(text)` | Inline-only markdown pass (bold/italic/wikilinks) used inside list items and headers by `renderMarkdown` |
+| `resolveWikilink(name)` | Look up a `[[name]]` against all regions/NPCs/buildings; returns the matching entity or null |
+| `parseMarkdownNote(text)` | Split an Obsidian-style note into `{name, description, dmNotes}` by reading frontmatter/headers/sections |
+| `wireMdField(el, getter, setter)` | Wire a rendered markdown field for click-to-edit: shows rendered HTML, swaps to a raw-text textarea on click, saves on blur |
+| `navigateLbWikilink(name)` | Resolve and jump to a `[[wikilink]]` target from inside the lore browser (selects region/entity, scrolls to it) |
+| `importEntityFromMarkdown(type, r)` | Reads a `.md` file and creates a new NPC/Building in region `r` from its parsed name/description/DM notes |
+| `importRegionLoreFromMarkdown(r)` | Reads a `.md` file and overwrites region `r`'s public lore / DM notes from its parsed sections |
+| `openStubModal(names, regionName)` | Async modal — lets the DM classify each unresolved `[[wikilink]]` name as Person / Place / Skip; resolves `{npcs, places}` |
+| `createStubReferences(r, parsed)` | Scans imported text for unresolved `[[wikilinks]]`, opens `openStubModal`, stubs chosen names as NPCs in `r` or queues them as pending locations |
+| `describeStubResults(picks)` | Formats a `{npcs, places}` result into a one-line status message |
+| `addPendingLocation(name)` / `renderPendingLocations()` | Queue a place name in the sidebar's "Places to add" list and (re)render it as draggable chips |
 
 ---
 
@@ -337,6 +349,20 @@ A specialized layer on top of the polygon tool for marking regions/kingdoms, dra
 - **Kingdom Details fields**: Ruler/Leader, Government, Capital — free-text, but Ruler and Capital can additionally be *linked* to an existing NPC or location via `rulerRef`/`capitalRef`. Linked refs render as clickable "🔗 Name" chips (editor edit panel, lore browser, and player popup) that jump straight to the target — for an NPC ruler, this means selecting their home region, switching to its NPCs tab, and auto-expanding+scrolling to their card (`navigateToEntity` / `navigateToPopupEntity`). Hand-editing the free-text field clears the ref (keeps things from silently going stale).
 - **Auto-detected contents**: `settlementsInTerritory()` ray-casts every pin/small-polygon centroid against the border to build a live "Settlements within these Borders" list (click to select), and `entitiesInTerritory()` goes one level deeper, aggregating those settlements' NPCs and Buildings into "Notable NPCs/Buildings in these Lands" chip lists — all clickable, all kept in sync automatically as the map changes (no manual bookkeeping). The player-export equivalents additionally filter out unexplored locations (`!r.explored`) so fog-of-war secrets aren't leaked.
 
+### Markdown lore + Obsidian-style import (`renderMarkdown`, `importEntityFromMarkdown`, `importRegionLoreFromMarkdown`)
+Public lore, DM notes, and entity descriptions are written in a small Markdown subset (headers, **bold**/*italic*, lists, and `[[wikilinks]]`) and rendered to HTML wherever they're displayed — edit panel, lore browser, and player popups (`renderMarkdown`/`inlineMd`). Click any rendered field to swap it back to a raw-text textarea for editing (`wireMdField`); it re-renders on blur. `[[Name]]` and `[[Name|Display Text]]` links resolve against every region/NPC/building (`resolveWikilink`) and become clickable jumps (`navigateLbWikilink` in the lore browser; player popups get the read-only equivalent).
+
+DMs can also **import a whole Obsidian note** instead of typing: `#btn-import-npc-md` / `#btn-import-building-md` create a new NPC/Building from a `.md` file's parsed name + body (`importEntityFromMarkdown`), and `#btn-import-lore-md` overwrites a region's public lore/DM notes the same way (`importRegionLoreFromMarkdown`). `parseMarkdownNote` splits the file into `{name, description, dmNotes}` by reading the title/frontmatter and a "DM Notes"-style heading, so a single export from Obsidian (or any markdown notebook) drops in with no reformatting.
+
+### Stub-reference creation from imports (`createStubReferences`, `openStubModal`, pending locations)
+Imported notes routinely mention `[[entities]]` that don't exist in the world yet — other NPCs, other settlements. After every markdown import, `createStubReferences` scans the new text for `[[wikilinks]]` that don't `resolveWikilink`, and — if any are found — opens `openStubModal`, a per-name classifier modal:
+
+- **🧑 Person** → stubbed immediately as an empty NPC inside the region just imported into (a person has to be *somewhere*, and "wherever the DM put this note" is the best guess available).
+- **📍 Place** → too risky to auto-place (a region needs real map geometry — a polygon or a pin position — that can't be guessed from a name). Instead it's queued in the sidebar's "📍 Places to add" list as a draggable chip; dragging it onto the map drops a pre-named pin there via the existing drag-and-drop pipeline (`__pending__:` payload prefix in the `mapContainer` drop handler), ready for the DM to reshape/retag/annotate.
+- **— Skip** → ignored; the `[[link]]` simply stays unresolved until something with that name is created normally.
+
+Either way, the moment a matching region/NPC/building is created — by this flow or by hand — the original `[[link]]` resolves and becomes clickable retroactively. The pending-locations queue is intentionally session-only (not persisted to `state`/IndexedDB): the `[[link]]` in the source note is the durable record, so there's nothing to lose by not saving the queue itself.
+
 ### Status tags (`r.statusTags`)
 Five colored flags per region: *Quest Active* (gold), *Visited* (green), *Cleared* (grey), *Hostile* (red), *Rumoured* (purple).
 - Toggle chips in the edit panel (Info tab, below fog-of-war toggle). Hidden for labels.
@@ -420,7 +446,7 @@ Run this after any changes to check brace balance:
 
 ```powershell
 $content = Get-Content "E:\DND_APPS\editor.html" -Raw
-$scriptStart = $content.IndexOf('<script>', $content.IndexOf('generatePlayerExport') - 85000) + 8
+$scriptStart = $content.IndexOf('<script>') + 8
 $scriptEnd = $content.IndexOf('</script>', $scriptStart)
 $js = $content.Substring($scriptStart, $scriptEnd - $scriptStart)
 $tplS = $js.IndexOf('return `<!DOCTYPE'); $tplE = $js.LastIndexOf('`;')
