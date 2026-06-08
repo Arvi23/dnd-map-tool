@@ -2916,9 +2916,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #popup.expanded .popup-lore,#popup.expanded .pe-desc{font-size:15px;line-height:1.8}
 #popup-cover{width:100%;max-height:160px;object-fit:cover;border-radius:4px 4px 0 0;display:none}
 #popup-cover.has-img{display:block}
-#popup-head{padding:14px 14px 0;cursor:grab;-webkit-user-select:none;user-select:none}
+#popup-head{padding:14px 14px 0;cursor:grab;-webkit-user-select:none;user-select:none;touch-action:none}
 #popup-head.dragging{cursor:grabbing}
-#popup.expanded #popup-head{cursor:default}
+#popup.expanded #popup-head{cursor:default;touch-action:auto}
 #popup-close,#popup-expand{float:right;background:none;border:none;color:#7a6a4a;cursor:pointer;font-size:17px;line-height:1;margin-left:8px}
 #popup-close:hover,#popup-expand:hover{color:var(--accent)}
 #popup-name{font-size:19px;color:var(--accent);font-variant:small-caps;letter-spacing:.06em}
@@ -3410,23 +3410,29 @@ function showPopup(r,cx,cy){
     popup.style.left=Math.max(4,left)+'px';popup.style.top=Math.max(48,top)+'px';
   }
 }
-// Drag the popup by its header — lets players move it out of the way of the spot they're reading about
+// Drag the popup by its header — pointer events handle mouse, touch, and pen uniformly;
+// setPointerCapture keeps events routed to popupHead even when the pointer leaves it,
+// which prevents the classic "stuck drag" bug when the mouse/finger releases outside the window.
 const popupHead=document.getElementById('popup-head');
 let popupDrag=null;
-popupHead.addEventListener('mousedown',e=>{
+function stopDrag(){ popupDrag=null; popupHead.classList.remove('dragging'); }
+popupHead.addEventListener('pointerdown',e=>{
   if(e.target.closest('button')||popup.classList.contains('expanded')) return;
   e.preventDefault();
+  popupHead.setPointerCapture(e.pointerId);
   const r=popup.getBoundingClientRect();
   popupDrag={dx:e.clientX-r.left,dy:e.clientY-r.top};
   popupHead.classList.add('dragging');
 });
-document.addEventListener('mousemove',e=>{
+popupHead.addEventListener('pointermove',e=>{
   if(!popupDrag) return;
-  const nl=Math.max(4,Math.min(e.clientX-popupDrag.dx,window.innerWidth-60));
-  const nt=Math.max(48,Math.min(e.clientY-popupDrag.dy,window.innerHeight-60));
+  const pw=popup.offsetWidth, ph=popup.offsetHeight;
+  const nl=Math.max(4,Math.min(e.clientX-popupDrag.dx,window.innerWidth-pw-4));
+  const nt=Math.max(48,Math.min(e.clientY-popupDrag.dy,window.innerHeight-ph-4));
   popup.style.left=nl+'px';popup.style.top=nt+'px';
 });
-document.addEventListener('mouseup',()=>{ if(popupDrag){ popupDrag=null; popupHead.classList.remove('dragging'); } });
+popupHead.addEventListener('pointerup',stopDrag);
+popupHead.addEventListener('pointercancel',stopDrag);
 // Expand toggle — swaps the compact floating popup for a large centered reader, like the DM's lore browser
 const popupExpand=document.getElementById('popup-expand');
 popupExpand.onclick=e=>{
