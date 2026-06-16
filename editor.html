@@ -349,7 +349,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
   <input type="file" id="file-img" accept="image/*" style="display:none">
   <div class="sep"></div>
   <button class="btn btn-icon" id="btn-polygon" title="Polygon (P)">⬡</button>
-  <button class="btn btn-icon" id="btn-territory" title="Kingdom / Territory border (K)">👑</button>
+  <button class="btn btn-icon" id="btn-territory" title="Territory border (K)">👑</button>
   <button class="btn btn-icon" id="btn-faction" title="Faction territory (F)">⚔</button>
   <button class="btn btn-icon" id="btn-label" title="Text Label (L)">𝖳</button>
   <div class="sep"></div>
@@ -456,7 +456,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
           <div id="territory-section" style="display:none">
             <div class="territory-toggle" id="territory-toggle">
               <div class="knob"></div>
-              <span class="terr-label">Mark as Territory / Kingdom</span>
+              <span class="terr-label">Mark as Territory</span>
             </div>
             <div id="territory-fields" style="display:none">
               <div class="field">
@@ -613,7 +613,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
     <table class="shortcut-table">
       <tr><td colspan="2" class="shortcut-section">Drawing</td></tr>
       <tr><td>P</td><td>Polygon tool</td></tr>
-      <tr><td>K</td><td>Kingdom / Territory border tool</td></tr>
+      <tr><td>K</td><td>Territory border tool</td></tr>
       <tr><td>F</td><td>Faction territory tool</td></tr>
       <tr><td>L</td><td>Text label tool</td></tr>
       <tr><td>Enter</td><td>Close polygon / finish road</td></tr>
@@ -692,7 +692,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 // CONSTANTS
 // ============================================================
 const TYPES = ['City','Town','Village','Dungeon','Ruin','Wilderness','POI','Road','Water','Other'];
-const TYPE_COLORS = {City:'#c0392b',Town:'#e67e22',Village:'#f1c40f',Dungeon:'#8e44ad',Ruin:'#95a5a6',Wilderness:'#27ae60',POI:'#2980b9',Road:'#b7950b',Water:'#1a5276',Other:'#556070',Kingdom:'#7b68ee',Faction:'#ca6f1e'};
+const TYPE_COLORS = {City:'#c0392b',Town:'#e67e22',Village:'#f1c40f',Dungeon:'#8e44ad',Ruin:'#95a5a6',Wilderness:'#27ae60',POI:'#2980b9',Road:'#b7950b',Water:'#1a5276',Other:'#556070',Territory:'#7b68ee',Kingdom:'#7b68ee',Faction:'#ca6f1e'};
 const STATUS_TAGS={'Quest Active':{color:'#f0b429'},'Visited':{color:'#52c467'},'Cleared':{color:'#7f8c8d'},'Hostile':{color:'#e74c3c'},'Rumoured':{color:'#9b59b6'}};
 const STATUS_TAG_NAMES=Object.keys(STATUS_TAGS);
 
@@ -716,7 +716,7 @@ const PIN_ICONS = {
 let state = { imageB64:null, imgW:0, imgH:0, regions:[], nextId:1, scratchpad:'', partyMarker:{active:false,px:.5,py:.5,size:1} };
 let viewport = { x:0, y:0, scale:1 };
 let activeTool = null;
-let drawingTerritory = false;  // when true, the active 'polygon' tool draws a Kingdom/Territory border
+let drawingTerritory = false;  // when true, the active 'polygon' tool draws a Territory border
 let drawingFaction = false;    // when true, the active 'polygon' tool draws a Faction overlay
 let drawing = [];
 let selectedId = null;
@@ -915,9 +915,9 @@ function migrateRegions(){
     if(!r.factionRelations) r.factionRelations=[];
     if(!('factionLeader' in r)) r.factionLeader='';
     if(!('factionGoal' in r)) r.factionGoal='';
-    // Fix legacy bug: territories created before the dedicated Kingdom tag existed
-    // could be left with a normal type (e.g. 'City'), which conflicted visually.
-    if(r.isTerritory && r.tag!=='Kingdom'){ r._prevTag=r.tag; r.tag='Kingdom'; r.color=TYPE_COLORS.Kingdom||r.color; }
+    // Normalize territory tag: old saves used 'Kingdom', new ones use 'Territory'.
+    if(r.isTerritory && r.tag==='Kingdom') r.tag='Territory';
+    if(r.isTerritory && r.tag!=='Territory'){ r._prevTag=r.tag; r.tag='Territory'; r.color=TYPE_COLORS.Territory||r.color; }
     if(r.isFaction && r.tag!=='Faction'){ r._prevFactionTag=r.tag; r.tag='Faction'; r.color=TYPE_COLORS.Faction||r.color; }
   });
 }
@@ -1275,8 +1275,8 @@ function closePolygon(){
   snapshot();
   const r=newRegion('polygon'); r.points=drawing.map(p=>[p.nx,p.ny]);
   if(drawingTerritory){
-    r.isTerritory=true; r.tag='Kingdom'; r.color=TYPE_COLORS.Kingdom;
-    r.name='New Kingdom';
+    r.isTerritory=true; r.tag='Territory'; r.color=TYPE_COLORS.Territory;
+    r.name='New Territory';
   } else if(drawingFaction){
     r.isFaction=true; r.tag='Faction'; r.color=TYPE_COLORS.Faction;
     r.name='New Faction'; r.fillOpacity=0.15;
@@ -1334,7 +1334,7 @@ function setTool(tool, asTerritory, asFaction){
 }
 
 function updateHint(){
-  if(activeTool==='polygon') cursorHint.textContent=drawing.length<3?(drawingTerritory?'Click to trace the kingdom\'s border • Esc to cancel':drawingFaction?'Click to trace the faction\'s territory • Esc to cancel':'Click to add vertices • Esc to cancel'):'Click near start or Enter to close • Esc to cancel';
+  if(activeTool==='polygon') cursorHint.textContent=drawing.length<3?(drawingTerritory?'Click to trace the territory border • Esc to cancel':drawingFaction?'Click to trace the faction\'s territory • Esc to cancel':'Click to add vertices • Esc to cancel'):'Click near start or Enter to close • Esc to cancel';
   else if(activeTool==='road') cursorHint.textContent=drawing.length<2?'Click to start road • Esc to cancel':'Click to add points • Double-click or Enter to finish • Esc to cancel';
   else if(activeTool==='label') cursorHint.textContent='Click to place text label • Esc to cancel';
   else cursorHint.textContent='';
@@ -2221,7 +2221,7 @@ function repopulateEditPanel(){
       stRow.appendChild(btn);
     });
   }
-  // Territory / Kingdom section (polygons only)
+  // Territory section (polygons only)
   const terrSection=document.getElementById('territory-section');
   const isPolygon=r.kind==='polygon';
   terrSection.style.display=isPolygon?'block':'none';
@@ -2498,7 +2498,7 @@ document.getElementById('territory-toggle').onclick=()=>{
     // Disable faction mode if active
     if(r.isFaction){ r.isFaction=false; r.tag=r._prevFactionTag||'Other'; delete r._prevFactionTag; r.color=TYPE_COLORS[r.tag]||r.color; r.fillOpacity=1; }
     if(!r.territoryDisplay) r.territoryDisplay='filled';
-    if(r.tag!=='Kingdom'){ r._prevTag=r.tag; r.tag='Kingdom'; r.color=TYPE_COLORS.Kingdom; }
+    if(r.tag!=='Territory'){ r._prevTag=r.tag; r.tag='Territory'; r.color=TYPE_COLORS.Territory; }
   } else {
     r.tag=r._prevTag||'Other'; delete r._prevTag;
     r.color=TYPE_COLORS[r.tag]||r.color;
@@ -3853,7 +3853,7 @@ function lbMetaHTML(r,isLabel){
   const chips=[];
   chips.push(r.explored?'<span class="lb-chip">✓ Explored</span>':'<span class="lb-chip" style="color:#888">🌫 Unexplored</span>');
   if(!isLabel){
-    if(r.isTerritory) chips.push('<span class="lb-chip" style="color:var(--accent)">👑 Territory / Kingdom</span>');
+    if(r.isTerritory) chips.push('<span class="lb-chip" style="color:var(--accent)">👑 Territory</span>');
     if(r.isFaction) chips.push('<span class="lb-chip" style="color:#ca6f1e">⚔ Faction</span>');
     if(r.npcs?.length) chips.push('<span class="lb-chip">👤 '+r.npcs.length+' NPC'+(r.npcs.length!==1?'s':'')+'</span>');
     if(r.buildings?.length) chips.push('<span class="lb-chip">🏛 '+r.buildings.length+' building'+(r.buildings.length!==1?'s':'')+'</span>');
@@ -3924,7 +3924,7 @@ function renderLbMain(){
       if(cap) capitalLink='<span class="lb-ref-link" data-settlement-id="'+cap.id+'">🔗&nbsp;'+escHtml(cap.name)+'</span>';
     }
     html+='<div class="lb-section">'
-      +'<div class="lb-section-heading">👑 Kingdom Details</div>'
+      +'<div class="lb-section-heading">👑 Territory Details</div>'
       +'<div class="lb-kingdom-grid">'
       +'<div><span class="lb-field-label">Ruler / Leader</span><input class="lb-entity-input" id="lb-edit-ruler" value="'+escHtml(r.ruler||'')+'" placeholder="Unknown">'+rulerLink+'</div>'
       +'<div><span class="lb-field-label">Government</span><input class="lb-entity-input" id="lb-edit-government" value="'+escHtml(r.government||'')+'" placeholder="Unknown"></div>'

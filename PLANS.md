@@ -118,7 +118,7 @@ All region kinds share this base shape. Fields that don't apply to a kind are st
   // status flags (NOT on labels):
   statusTags: string[]  // subset of STATUS_TAG_NAMES: 'Quest Active','Visited','Cleared','Hostile','Rumoured'
 
-  // Kingdom / Territory (polygons only — see "Kingdom / Territory system" below):
+  // Territory (polygons only — see "Territory system" below):
   isTerritory: boolean,       // flag, NOT a separate `kind` — reuses all polygon machinery
   territoryDisplay: string,   // 'filled' | 'border' | 'hidden'
   ruler: string,              // free-text display name (kept in sync when rulerRef is set)
@@ -130,7 +130,7 @@ All region kinds share this base shape. Fields that don't apply to a kind are st
 }
 ```
 
-> **The `Kingdom` tag is special.** When `isTerritory` is set, `tag` is forced to `'Kingdom'` (a dedicated entry in `TYPE_COLORS` that deliberately is NOT in the `TYPES` list, so it never appears as a pickable Type for ordinary pins/regions). The Type field is hidden in the edit panel whenever `r.isTerritory` is true. This exists to fix a real bug: territories used to keep whatever mundane type (e.g. `'City'`) they had before being marked, which was confusing and showed contradictory info. `migrateRegions()` normalizes any pre-existing offenders on load (stashing their old tag in `_prevTag` so toggling the territory flag back off restores it).
+> **The `Territory` tag is special.** When `isTerritory` is set, `tag` is forced to `'Territory'` (a dedicated entry in `TYPE_COLORS` that deliberately is NOT in the `TYPES` list, so it never appears as a pickable Type for ordinary pins/regions). The Type field is hidden in the edit panel whenever `r.isTerritory` is true. Old saves used `tag:'Kingdom'` — `migrateRegions()` converts them silently. The `Kingdom` key is kept in `TYPE_COLORS` as an alias so legacy color lookups don't fail.
 
 ### NPC / Building object
 
@@ -214,11 +214,20 @@ All region kinds share this base shape. Fields that don't apply to a kind are st
 - **Point placement uses `mouseup` not `click`** — same reason as roads (see below). The `click` handler on `mapSvg` explicitly gates out `activeTool==='polygon'`. The `mouseup` handler uses the same 10px drift threshold (`dx²+dy² < 100`).
 - `snapClose` flag set in `updateDrawingCursor()`.
 
-### Kingdom / Territory border (`K` key)
-- Its own toolbar button (👑) and shortcut, separate from the plain Polygon tool — drawing a border and then having to remember to flip a toggle was the old (confusing) flow.
-- **Implementation reuses the polygon tool wholesale** rather than duplicating drawing/event-handling code: `setTool('polygon', true)` sets `activeTool='polygon'` plus a module-level `drawingTerritory=true` flag. Every mousedown/mouseup/click/escape/right-click code path that branches on `activeTool==='polygon'` therefore "just works" unchanged for kingdoms too — only `closePolygon()`, `setTool()`, and the live-drawing preview check `drawingTerritory` to add territory-specific behavior (auto-set `isTerritory=true, tag='Kingdom'`, distinct purple dashed preview stroke, button highlight).
+### Territory border (`K` key)
+- Its own toolbar button (👑) and shortcut, separate from the plain Polygon tool.
+- **Implementation reuses the polygon tool wholesale**: `setTool('polygon', true, false)` sets `activeTool='polygon'` plus `drawingTerritory=true`. Every event path that handles `activeTool==='polygon'` just works for territories too — only `closePolygon()`, `setTool()`, and the live-drawing preview check `drawingTerritory` to add territory-specific behavior (auto-set `isTerritory=true, tag='Territory'`, distinct purple dashed preview stroke, button highlight).
 - `drawingTerritory` is reset to `false` on: finishing the polygon, Escape-cancel, right-click-cancel, and switching to a different tool.
-- This is the only supported way to *create* a new kingdom; existing polygons can still be converted via the "Mark as Territory" toggle in the edit panel (e.g. to retro-fit an already-drawn region's border).
+- Existing polygons can also be converted via the "Mark as Territory" toggle in the edit panel.
+
+### Faction territory (`F` key)
+- Toolbar button (⚔), parallel to the Territory tool but for political factions.
+- `setTool('polygon', false, true)` sets `drawingFaction=true`. `closePolygon()` auto-sets `isFaction=true, tag='Faction', fillOpacity=0.15`.
+- Factions render at the very bottom of the SVG z-stack (below territories, below everything else) so locations inside them remain clickable. Stroke pattern: dotted `4 4` (vs territory's long dashes `13 6`).
+- Territory and Faction flags are mutually exclusive on a single polygon — toggling one on turns the other off.
+- Faction edit fields: `factionLeader`, `factionGoal`, `factionRelations[]` (`{targetId, type:'ally'|'neutral'|'rival'|'enemy', tension:1-5}`).
+- `settlementsInFaction()` mirrors `settlementsInTerritory()` for auto-detected contents.
+- Player export: faction overlays on map; location popups show "Faction Influence" chips for any factions covering that spot.
 
 ### Road (drag from palette)
 - Dragging Road tile places first point and enters `activeTool='road'`.
@@ -340,12 +349,12 @@ Toggled by the `←` button in the edit panel tab bar, the `📖` button in the 
 
 **All fields are inline-editable directly in the lore browser** — name, lore, DM notes, entity names and descriptions auto-save with a 350ms debounce back to `state`, the sidebar, and the SVG. Textareas auto-resize to fit content. DM notes are always shown (even when empty) so DMs can type directly without going back to the edit panel.
 
-### Kingdom / Territory system (`r.isTerritory`)
+### Territory system (`r.isTerritory`)
 A specialized layer on top of the polygon tool for marking regions/kingdoms, drawn with the dedicated 👑 Kingdom tool (`K` key — see Drawing Tools) or retro-fitted onto an existing polygon via the "Mark as Territory / Kingdom" toggle in its edit panel.
 
 - **Click-through by design, no custom hit-testing**: territories are rendered first (bottom of the SVG z-order — see "SVG rendering" notes above), so clicking a pin or small region inside a kingdom's border selects *that* shape, while clicking empty space inside the border falls through to select the kingdom itself. This was the user's "crucial" requirement and falls out naturally from paint order + existing `stopPropagation` click handling.
 - **Border display modes** (`territoryDisplay`): `'filled'` (normal polygon fill+stroke), `'border'` (transparent fill, `pointer-events='visibleStroke'` so only the outline is clickable and the interior is fully click-through), `'hidden'` (shape isn't rendered at all — except a faint preview while selected/hovered for editing — but the name label always still renders, an intentional "name without border" cartography effect). All three are respected in both the editor and the player export.
-- **Dedicated `Kingdom` tag** fixes a real bug where territories could retain a mundane type like `'City'`; see the `_prevTag` note in the Region object reference above.
+- **Dedicated `Territory` tag** fixes a real bug where territories could retain a mundane type like `'City'`; see the `_prevTag` note in the Region object reference above. Old saves that stored `tag:'Kingdom'` are silently migrated to `'Territory'` in `migrateRegions()`; the `Kingdom` key in `TYPE_COLORS` is kept as an alias so any pre-migration color lookups don't break.
 - **Kingdom Details fields**: Ruler/Leader, Government, Capital — free-text, but Ruler and Capital can additionally be *linked* to an existing NPC or location via `rulerRef`/`capitalRef`. Linked refs render as clickable "🔗 Name" chips (editor edit panel, lore browser, and player popup) that jump straight to the target — for an NPC ruler, this means selecting their home region, switching to its NPCs tab, and auto-expanding+scrolling to their card (`navigateToEntity` / `navigateToPopupEntity`). Hand-editing the free-text field clears the ref (keeps things from silently going stale).
 - **Auto-detected contents**: `settlementsInTerritory()` ray-casts every pin/small-polygon centroid against the border to build a live "Settlements within these Borders" list (click to select), and `entitiesInTerritory()` goes one level deeper, aggregating those settlements' NPCs and Buildings into "Notable NPCs/Buildings in these Lands" chip lists — all clickable, all kept in sync automatically as the map changes (no manual bookkeeping). The player-export equivalents additionally filter out unexplored locations (`!r.explored`) so fog-of-war secrets aren't leaked.
 
@@ -378,7 +387,22 @@ These are ordered by impact-to-effort ratio. The core question for each: *does t
 
 ### High priority
 
-**1. Multiple maps with linking**
+**1. Rumours system**
+Each region can hold a list of rumours — short snippets of information that players might hear about a place before visiting it. Unlike public lore (which is "what we know for certain"), rumours are individually flagged as *true*, *false*, or *misleading*, visible only to the DM.
+
+Data shape (new array on every region):
+```javascript
+r.rumours = [
+  { id: string, text: string, isTrue: boolean|null, dmNote: string }
+]
+```
+- `isTrue: true` = accurate rumour. `false` = false/planted rumour. `null` = unknown/ambiguous.
+- Player export: shows rumours as a "Rumours heard about this place" section in the popup, without the true/false flag — players see the text only.
+- Editor: a "Rumours" sub-section in the Info tab (below public lore), with a small truth-indicator toggle (🟢 true / 🔴 false / ⚪ unknown) and a private DM note per rumour.
+- Rumours are exportable to players only when `r.explored` is true (same rule as lore).
+- A possible future enhancement: a DM-side "Rumour Board" overlay showing all rumours across all locations, filterable by true/false/unknown — useful for campaign prep.
+
+**2. Multiple maps with linking**
 The single biggest impact feature. A world map can contain city pins; clicking a city pin in the player export navigates to the city's own map (another embedded map page). DM creates child maps and links them to parent pins.
 
 Architecture sketch:
@@ -414,16 +438,25 @@ Each region can record the session number when it was revealed.
 
 ### Lower priority
 
-**7. Relationship notes**
+**7. Left panel rework**
+The current left panel is a fixed-layout mix of the drag palette (pin types + party marker) and the region list sidebar. As the tool grows, this creates crowding. Planned redesign:
+- Collapsible panel sections with headers (drag handles to rearrange order).
+- "Palette" section: pin types, road, party marker — can be collapsed when not needed.
+- "Regions" section: search + filter chips + region list — current behavior, promoted to full panel height when palette is collapsed.
+- "Pending Places" section (currently appears/disappears inline): persistent collapsible section that shows `[]` count badge when empty, expands to list draggable chips when non-empty.
+- Optional: "Factions" quick-view section listing all faction regions with their color dots and relation summaries — a political overview without having to click around the map.
+- The panel itself should be resizable (drag handle on the right edge, mirroring the existing right-panel resize handle).
+
+**9. Relationship notes**
 - Simple text field on an NPC: "Connected to [region/NPC name]".
 - No visual graph — just a text reference that shows in the player popup.
 
-**8. Mini-map**
+**10. Mini-map**
 - Small thumbnail of the full map visible when zoomed in.
 - Fixed position, bottom-right of the map container.
 - Click to teleport viewport.
 
-**9. Hex/square grid overlay**
+**11. Hex/square grid overlay**
 - Toggle a grid over the map.
 - Store grid settings in state: `state.grid: { type: 'hex'|'square'|null, size: number, color: string, opacity: number }`.
 - Not exported to players (DM tool only).
