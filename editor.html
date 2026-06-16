@@ -133,6 +133,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .terr-settlement-item{display:flex;align-items:center;gap:7px;padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:12px;transition:.15s}
 .terr-settlement-item:hover{border-color:var(--accent);color:var(--accent)}
 .terr-empty-msg{font-size:11px;color:var(--text-dim);font-style:italic;padding:2px 0}
+.faction-rel-row{display:flex;align-items:center;gap:6px;padding:4px 6px;background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:4px;font-size:12px}
+.faction-rel-name{flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.faction-rel-type-sel,.faction-rel-tension{font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;background:var(--bg);color:var(--text);cursor:pointer}
+.faction-rel-remove{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:15px;line-height:1;padding:0 2px}
+.faction-rel-remove:hover{color:#e74c3c}
+.territory-toggle.faction-on .knob{background:#5a3408}
+.territory-toggle.faction-on .knob::after{left:16px;background:var(--accent)}
 .terr-section-sub{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 4px}
 .ref-field-row{display:flex;gap:6px}
 .ref-field-row input{flex:1;min-width:0}
@@ -343,6 +350,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
   <div class="sep"></div>
   <button class="btn btn-icon" id="btn-polygon" title="Polygon (P)">⬡</button>
   <button class="btn btn-icon" id="btn-territory" title="Kingdom / Territory border (K)">👑</button>
+  <button class="btn btn-icon" id="btn-faction" title="Faction territory (F)">⚔</button>
   <button class="btn btn-icon" id="btn-label" title="Text Label (L)">𝖳</button>
   <div class="sep"></div>
   <button class="btn btn-icon" id="btn-undo" title="Undo Ctrl+Z">↩</button>
@@ -493,6 +501,41 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
               </div>
             </div>
           </div>
+          <div id="faction-section" style="display:none">
+            <div class="territory-toggle" id="faction-toggle">
+              <div class="knob"></div>
+              <span class="terr-label">Mark as Faction</span>
+            </div>
+            <div id="faction-fields" style="display:none">
+              <div class="field">
+                <label>Border Display</label>
+                <div class="terr-mode-row" id="faction-mode-row">
+                  <button class="btn terr-mode-btn" data-mode="filled" type="button">Filled</button>
+                  <button class="btn terr-mode-btn" data-mode="border" type="button">Border Only</button>
+                  <button class="btn terr-mode-btn" data-mode="hidden" type="button">Hidden</button>
+                </div>
+              </div>
+              <div class="field">
+                <label>Leader</label>
+                <input type="text" id="ep-faction-leader" placeholder="e.g. Lord Marius Vane">
+              </div>
+              <div class="field">
+                <label>Goal / Purpose</label>
+                <input type="text" id="ep-faction-goal" placeholder="e.g. Control the eastern trade routes">
+              </div>
+              <div class="field">
+                <label>Relations with other Factions</label>
+                <div id="faction-relations-list"></div>
+                <select id="faction-rel-pick" style="margin-top:6px;width:100%">
+                  <option value="">+ Add relation with faction…</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Settlements within these Borders</label>
+                <div class="terr-settlements" id="faction-settlements"></div>
+              </div>
+            </div>
+          </div>
           <div class="field">
             <label>Fill Opacity <span class="opacity-val" id="ep-opacity-val">100%</span></label>
             <div class="opacity-row">
@@ -571,6 +614,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
       <tr><td colspan="2" class="shortcut-section">Drawing</td></tr>
       <tr><td>P</td><td>Polygon tool</td></tr>
       <tr><td>K</td><td>Kingdom / Territory border tool</td></tr>
+      <tr><td>F</td><td>Faction territory tool</td></tr>
       <tr><td>L</td><td>Text label tool</td></tr>
       <tr><td>Enter</td><td>Close polygon / finish road</td></tr>
       <tr><td>Esc</td><td>Cancel drawing / deselect</td></tr>
@@ -648,7 +692,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 // CONSTANTS
 // ============================================================
 const TYPES = ['City','Town','Village','Dungeon','Ruin','Wilderness','POI','Road','Water','Other'];
-const TYPE_COLORS = {City:'#c0392b',Town:'#e67e22',Village:'#f1c40f',Dungeon:'#8e44ad',Ruin:'#95a5a6',Wilderness:'#27ae60',POI:'#2980b9',Road:'#b7950b',Water:'#1a5276',Other:'#556070',Kingdom:'#7b68ee'};
+const TYPE_COLORS = {City:'#c0392b',Town:'#e67e22',Village:'#f1c40f',Dungeon:'#8e44ad',Ruin:'#95a5a6',Wilderness:'#27ae60',POI:'#2980b9',Road:'#b7950b',Water:'#1a5276',Other:'#556070',Kingdom:'#7b68ee',Faction:'#ca6f1e'};
 const STATUS_TAGS={'Quest Active':{color:'#f0b429'},'Visited':{color:'#52c467'},'Cleared':{color:'#7f8c8d'},'Hostile':{color:'#e74c3c'},'Rumoured':{color:'#9b59b6'}};
 const STATUS_TAG_NAMES=Object.keys(STATUS_TAGS);
 
@@ -673,6 +717,7 @@ let state = { imageB64:null, imgW:0, imgH:0, regions:[], nextId:1, scratchpad:''
 let viewport = { x:0, y:0, scale:1 };
 let activeTool = null;
 let drawingTerritory = false;  // when true, the active 'polygon' tool draws a Kingdom/Territory border
+let drawingFaction = false;    // when true, the active 'polygon' tool draws a Faction overlay
 let drawing = [];
 let selectedId = null;
 let hoveredId = null;
@@ -866,9 +911,14 @@ function migrateRegions(){
     if(!('capital' in r)) r.capital='';
     if(!('rulerRef' in r)) r.rulerRef=null;
     if(!('capitalRef' in r)) r.capitalRef=null;
+    if(!('isFaction' in r)) r.isFaction=false;
+    if(!r.factionRelations) r.factionRelations=[];
+    if(!('factionLeader' in r)) r.factionLeader='';
+    if(!('factionGoal' in r)) r.factionGoal='';
     // Fix legacy bug: territories created before the dedicated Kingdom tag existed
     // could be left with a normal type (e.g. 'City'), which conflicted visually.
     if(r.isTerritory && r.tag!=='Kingdom'){ r._prevTag=r.tag; r.tag='Kingdom'; r.color=TYPE_COLORS.Kingdom||r.color; }
+    if(r.isFaction && r.tag!=='Faction'){ r._prevFactionTag=r.tag; r.tag='Faction'; r.color=TYPE_COLORS.Faction||r.color; }
   });
 }
 
@@ -1227,8 +1277,11 @@ function closePolygon(){
   if(drawingTerritory){
     r.isTerritory=true; r.tag='Kingdom'; r.color=TYPE_COLORS.Kingdom;
     r.name='New Kingdom';
+  } else if(drawingFaction){
+    r.isFaction=true; r.tag='Faction'; r.color=TYPE_COLORS.Faction;
+    r.name='New Faction'; r.fillOpacity=0.15;
   }
-  state.regions.push(r); drawing=[]; snapClose=false; drawingTerritory=false;
+  state.regions.push(r); drawing=[]; snapClose=false; drawingTerritory=false; drawingFaction=false;
   saveState(); renderSvg(); renderSidebar(); selectRegion(r.id);
 }
 
@@ -1262,31 +1315,34 @@ function newRegion(kind, tag){
   const defaultName = kind==='pin'?t+' Pin':kind==='road'?'Road':kind==='label'?'Label':'Region';
   const ps = kind==='pin' ? (defaultPinSizes[t]??1) : 1;
   const rs = kind==='road' ? defaultRoadSize : 1;
-  return { id:'r'+(state.nextId++), kind, name:defaultName, tag:t, color:kind==='label'?'#e8d5a0':(TYPE_COLORS[t]||TYPE_COLORS.Other), publicLore:'', dmNotes:'', explored:true, coverImage:null, fillOpacity:1, pinSize:ps, roadSize:rs, fontSize:1, fontStyle:'normal', points:[], px:.5, py:.5, npcs:[], buildings:[], statusTags:[], isTerritory:false, territoryDisplay:'filled', ruler:'', government:'', capital:'', rulerRef:null, capitalRef:null };
+  return { id:'r'+(state.nextId++), kind, name:defaultName, tag:t, color:kind==='label'?'#e8d5a0':(TYPE_COLORS[t]||TYPE_COLORS.Other), publicLore:'', dmNotes:'', explored:true, coverImage:null, fillOpacity:1, pinSize:ps, roadSize:rs, fontSize:1, fontStyle:'normal', points:[], px:.5, py:.5, npcs:[], buildings:[], statusTags:[], isTerritory:false, territoryDisplay:'filled', ruler:'', government:'', capital:'', rulerRef:null, capitalRef:null, isFaction:false, factionLeader:'', factionGoal:'', factionRelations:[] };
 }
 
-function setTool(tool, asTerritory){
-  asTerritory=!!asTerritory;
-  const turningOff = activeTool===tool && (tool!=='polygon' || drawingTerritory===asTerritory);
+function setTool(tool, asTerritory, asFaction){
+  asTerritory=!!asTerritory; asFaction=!!asFaction;
+  const turningOff = activeTool===tool && (tool!=='polygon' || (drawingTerritory===asTerritory && drawingFaction===asFaction));
   activeTool = turningOff ? null : tool;
   drawingTerritory = (turningOff || tool!=='polygon') ? false : asTerritory;
+  drawingFaction   = (turningOff || tool!=='polygon') ? false : asFaction;
   drawing=[]; snapClose=false;
-  document.getElementById('btn-polygon').classList.toggle('active',activeTool==='polygon'&&!drawingTerritory);
+  document.getElementById('btn-polygon').classList.toggle('active',activeTool==='polygon'&&!drawingTerritory&&!drawingFaction);
   document.getElementById('btn-territory').classList.toggle('active',activeTool==='polygon'&&drawingTerritory);
+  document.getElementById('btn-faction').classList.toggle('active',activeTool==='polygon'&&drawingFaction);
   document.getElementById('btn-label').classList.toggle('active',activeTool==='label');
   mapContainer.style.cursor=activeTool?'crosshair':'default';
   updateHint(); renderSvg();
 }
 
 function updateHint(){
-  if(activeTool==='polygon') cursorHint.textContent=drawing.length<3?(drawingTerritory?'Click to trace the kingdom\'s border • Esc to cancel':'Click to add vertices • Esc to cancel'):'Click near start or Enter to close • Esc to cancel';
+  if(activeTool==='polygon') cursorHint.textContent=drawing.length<3?(drawingTerritory?'Click to trace the kingdom\'s border • Esc to cancel':drawingFaction?'Click to trace the faction\'s territory • Esc to cancel':'Click to add vertices • Esc to cancel'):'Click near start or Enter to close • Esc to cancel';
   else if(activeTool==='road') cursorHint.textContent=drawing.length<2?'Click to start road • Esc to cancel':'Click to add points • Double-click or Enter to finish • Esc to cancel';
   else if(activeTool==='label') cursorHint.textContent='Click to place text label • Esc to cancel';
   else cursorHint.textContent='';
 }
 
-document.getElementById('btn-polygon').onclick=()=>setTool('polygon',false);
-document.getElementById('btn-territory').onclick=()=>setTool('polygon',true);
+document.getElementById('btn-polygon').onclick=()=>setTool('polygon',false,false);
+document.getElementById('btn-territory').onclick=()=>setTool('polygon',true,false);
+document.getElementById('btn-faction').onclick=()=>setTool('polygon',false,true);
 document.getElementById('btn-label').onclick=()=>setTool('label');
 
 document.getElementById('party-palette-item').addEventListener('dragstart',e=>{
@@ -1490,17 +1546,19 @@ function renderSvg(){
 
   const iconSize = Math.max(20, Math.min(W,H)*0.022);
 
-  // Territories render first (bottom of stack) so smaller regions/pins inside them remain clickable on top
+  // Factions render first (bottom), then territories, then everything else so inner regions stay clickable
+  const factions=state.regions.filter(r=>r.kind==='polygon'&&r.isFaction);
   const territories=state.regions.filter(r=>r.kind==='polygon'&&r.isTerritory);
-  const others=state.regions.filter(r=>!(r.kind==='polygon'&&r.isTerritory));
-  for(const r of [...territories,...others]){
+  const others=state.regions.filter(r=>!(r.kind==='polygon'&&(r.isTerritory||r.isFaction)));
+  for(const r of [...factions,...territories,...others]){
     const isSel=r.id===selectedId, isHov=r.id===hoveredId;
     const fOp=(r.fillOpacity??1);
 
     if(r.kind==='polygon'){
       const pts=r.points.map(([nx,ny])=>`${nx*W},${ny*H}`).join(' ');
       const isTerritory=!!r.isTerritory;
-      const dispMode=isTerritory?(r.territoryDisplay||'filled'):'filled';
+      const isFaction=!!r.isFaction;
+      const dispMode=(isTerritory||isFaction)?(r.territoryDisplay||'filled'):'filled';
       const showShape=dispMode!=='hidden'||isSel||isHov;
 
       if(showShape){
@@ -1513,9 +1571,10 @@ function renderSvg(){
           poly.setAttribute('fill',hexAlpha(r.color,fOp*(r.explored?(isSel||isHov?.45:.22):.5)));
         }
         poly.setAttribute('stroke',r.explored?r.color:'#555');
-        poly.setAttribute('stroke-width',isTerritory?(isSel?3:2):(isSel?2.5:1.5));
+        poly.setAttribute('stroke-width',isTerritory?(isSel?3:2):isFaction?(isSel?2.5:1.5):(isSel?2.5:1.5));
         poly.setAttribute('vector-effect','non-scaling-stroke');
         if(isTerritory) poly.setAttribute('stroke-dasharray',r.explored?'13 6':'6 3');
+        else if(isFaction) poly.setAttribute('stroke-dasharray','4 4');
         else if(!r.explored) poly.setAttribute('stroke-dasharray','6 3');
         if(isSel||isHov) poly.setAttribute('filter','url(#glow)');
         poly.style.cursor='pointer'; poly.dataset.id=r.id;
@@ -1803,13 +1862,13 @@ function renderSvg(){
 
   // in-progress polygon
   if(activeTool==='polygon'&&drawing.length>0){
-    const previewCol = drawingTerritory ? 'rgba(123,104,238,.9)' : 'rgba(201,168,76,.85)';
+    const previewCol = drawingTerritory ? 'rgba(123,104,238,.9)' : drawingFaction ? 'rgba(202,111,30,.9)' : 'rgba(201,168,76,.85)';
     const preview=[...drawing,cursorNorm];
     if(preview.length>=2){
       const pl=makeSvgEl('polyline');
       pl.setAttribute('points',preview.map(p=>`${p.nx*W},${p.ny*H}`).join(' '));
       pl.setAttribute('fill','none'); pl.setAttribute('stroke',previewCol);
-      pl.setAttribute('stroke-width',1.5); pl.setAttribute('stroke-dasharray',drawingTerritory?'13 6':'5 3');
+      pl.setAttribute('stroke-width',1.5); pl.setAttribute('stroke-dasharray',drawingTerritory?'13 6':drawingFaction?'4 4':'5 3');
       pl.setAttribute('vector-effect','non-scaling-stroke'); pl.setAttribute('pointer-events','none');
       mapSvg.appendChild(pl);
     }
@@ -1964,6 +2023,58 @@ function renderTerritoryEntityList(containerId,fieldId,entries,entityType){
   });
 }
 
+function settlementsInFaction(faction){
+  return state.regions.filter(r=>{
+    if(r.id===faction.id||r.isFaction||r.isTerritory||r.kind==='label'||r.kind==='road') return false;
+    let px,py;
+    if(r.kind==='pin'){ px=r.px; py=r.py; }
+    else if(r.kind==='polygon'){ px=r.points.reduce((s,[x])=>s+x,0)/r.points.length; py=r.points.reduce((s,[,y])=>s+y,0)/r.points.length; }
+    else return false;
+    return pointInPolygon(px,py,faction.points);
+  });
+}
+function renderFactionSettlements(r){
+  const wrap=document.getElementById('faction-settlements'); wrap.innerHTML='';
+  const inside=settlementsInFaction(r);
+  if(!inside.length){ wrap.innerHTML='<div class="terr-empty-msg">No locations detected within this border yet.</div>'; return; }
+  inside.forEach(s=>{
+    const item=document.createElement('div'); item.className='terr-settlement-item';
+    item.innerHTML='<div style="width:9px;height:9px;border-radius:50%;background:'+s.color+';flex-shrink:0"></div><span>'+escHtml(s.name)+'</span><span style="margin-left:auto;color:var(--text-dim);font-size:10px;text-transform:uppercase">'+escHtml(s.tag)+'</span>';
+    item.onclick=()=>selectRegion(s.id);
+    wrap.appendChild(item);
+  });
+}
+function renderFactionRelations(r){
+  const list=document.getElementById('faction-relations-list'); list.innerHTML='';
+  const typeColors={ally:'#27ae60',neutral:'#7f8c8d',rival:'#e67e22',enemy:'#c0392b'};
+  (r.factionRelations||[]).forEach((rel,idx)=>{
+    const target=state.regions.find(x=>x.id===rel.targetId); if(!target) return;
+    const col=typeColors[rel.type]||typeColors.neutral;
+    const row=document.createElement('div'); row.className='faction-rel-row';
+    row.innerHTML='<span class="faction-rel-name" style="color:'+col+'">'+escHtml(target.name)+'</span>'+
+      '<select class="faction-rel-type-sel" style="color:'+col+'">'+
+        '<option value="ally"'+(rel.type==='ally'?' selected':'')+'>Ally</option>'+
+        '<option value="neutral"'+(rel.type==='neutral'?' selected':'')+'>Neutral</option>'+
+        '<option value="rival"'+(rel.type==='rival'?' selected':'')+'>Rival</option>'+
+        '<option value="enemy"'+(rel.type==='enemy'?' selected':'')+'>Enemy</option>'+
+      '</select>'+
+      '<input class="faction-rel-tension" type="number" min="1" max="5" value="'+(rel.tension||1)+'" title="Tension (1-5)">'+
+      '<button class="faction-rel-remove" title="Remove">✕</button>';
+    row.querySelector('.faction-rel-type-sel').onchange=e=>{ snapshot(); r.factionRelations[idx].type=e.target.value; saveState(); renderFactionRelations(r); };
+    row.querySelector('.faction-rel-tension').onchange=e=>{ snapshot(); r.factionRelations[idx].tension=Math.max(1,Math.min(5,parseInt(e.target.value)||1)); saveState(); };
+    row.querySelector('.faction-rel-remove').onclick=()=>{ snapshot(); r.factionRelations.splice(idx,1); saveState(); renderFactionRelations(r); populateFactionRelPick(r); };
+    list.appendChild(row);
+  });
+}
+function populateFactionRelPick(r){
+  const sel=document.getElementById('faction-rel-pick');
+  const used=new Set((r.factionRelations||[]).map(x=>x.targetId));
+  sel.innerHTML='<option value="">+ Add relation with faction…</option>';
+  state.regions.filter(x=>x.isFaction&&x.id!==r.id&&!used.has(x.id)).forEach(f=>{
+    const o=document.createElement('option'); o.value=f.id; o.textContent=f.name; sel.appendChild(o);
+  });
+}
+
 // Selects a region, switches to the NPC/Building tab and opens+scrolls to the given entity
 function navigateToEntity(regionId,entityType,entityId){
   activeTab = entityType==='building' ? 'buildings' : 'npcs';
@@ -2083,7 +2194,7 @@ function repopulateEditPanel(){
   document.querySelectorAll('.ep-tab[data-tab="npcs"],.ep-tab[data-tab="buildings"]').forEach(t=>t.style.display=isLabel?'none':'');
   // Cover image and Type field hidden for labels
   document.querySelector('.cover-wrap').style.display=isLabel?'none':'block';
-  document.getElementById('ep-tag-field').style.display=(isLabel||r.isTerritory)?'none':'block';
+  document.getElementById('ep-tag-field').style.display=(isLabel||r.isTerritory||r.isFaction)?'none':'block';
   // Font style and presets (labels only)
   document.getElementById('ep-fontstyle-field').style.display=isLabel?'block':'none';
   document.getElementById('ep-label-presets').style.display=isLabel?'block':'none';
@@ -2144,6 +2255,22 @@ function repopulateEditPanel(){
       renderRefChip('ruler');
       renderRefChip('capital');
       renderTerritorySettlements(r);
+    }
+  }
+  // Faction section (polygons only)
+  const factionSection=document.getElementById('faction-section');
+  factionSection.style.display=isPolygon?'block':'none';
+  if(isPolygon){
+    document.getElementById('faction-toggle').classList.toggle('faction-on',!!r.isFaction);
+    document.getElementById('faction-fields').style.display=r.isFaction?'block':'none';
+    if(r.isFaction){
+      const mode=r.territoryDisplay||'filled';
+      document.querySelectorAll('#faction-mode-row .terr-mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+      document.getElementById('ep-faction-leader').value=r.factionLeader||'';
+      document.getElementById('ep-faction-goal').value=r.factionGoal||'';
+      renderFactionRelations(r);
+      populateFactionRelPick(r);
+      renderFactionSettlements(r);
     }
   }
   if(isLabel){
@@ -2368,6 +2495,8 @@ document.getElementById('territory-toggle').onclick=()=>{
   snapshot();
   r.isTerritory=!r.isTerritory;
   if(r.isTerritory){
+    // Disable faction mode if active
+    if(r.isFaction){ r.isFaction=false; r.tag=r._prevFactionTag||'Other'; delete r._prevFactionTag; r.color=TYPE_COLORS[r.tag]||r.color; r.fillOpacity=1; }
     if(!r.territoryDisplay) r.territoryDisplay='filled';
     if(r.tag!=='Kingdom'){ r._prevTag=r.tag; r.tag='Kingdom'; r.color=TYPE_COLORS.Kingdom; }
   } else {
@@ -2384,6 +2513,43 @@ document.querySelectorAll('#terr-mode-row .terr-mode-btn').forEach(btn=>{
     saveState(); renderSvg(); repopulateEditPanel();
   });
 });
+document.getElementById('faction-toggle').onclick=()=>{
+  const r=state.regions.find(x=>x.id===selectedId); if(!r||r.kind!=='polygon') return;
+  snapshot();
+  r.isFaction=!r.isFaction;
+  if(r.isFaction){
+    // Disable territory mode if active
+    if(r.isTerritory){ r.isTerritory=false; r.tag=r._prevTag||'Other'; delete r._prevTag; r.color=TYPE_COLORS[r.tag]||r.color; }
+    if(!r.territoryDisplay) r.territoryDisplay='filled';
+    if(!r.factionRelations) r.factionRelations=[];
+    if(r.tag!=='Faction'){ r._prevFactionTag=r.tag; r.tag='Faction'; r.color=TYPE_COLORS.Faction; }
+    if(r.fillOpacity>0.3) r.fillOpacity=0.15;
+  } else {
+    r.tag=r._prevFactionTag||'Other'; delete r._prevFactionTag;
+    r.color=TYPE_COLORS[r.tag]||r.color;
+    r.fillOpacity=1;
+  }
+  saveState(); renderSvg(); repopulateEditPanel(); renderSidebar();
+  if(document.getElementById('lore-browser').classList.contains('open')) renderLbMain();
+};
+document.querySelectorAll('#faction-mode-row .terr-mode-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const r=state.regions.find(x=>x.id===selectedId); if(!r) return;
+    snapshot(); r.territoryDisplay=btn.dataset.mode;
+    saveState(); renderSvg(); repopulateEditPanel();
+  });
+});
+document.getElementById('ep-faction-leader').oninput=e=>editFieldChanged('factionLeader',e.target.value);
+document.getElementById('ep-faction-goal').oninput=e=>editFieldChanged('factionGoal',e.target.value);
+document.getElementById('faction-rel-pick').onchange=e=>{
+  if(!e.target.value) return;
+  const r=state.regions.find(x=>x.id===selectedId); if(!r) return;
+  snapshot();
+  if(!r.factionRelations) r.factionRelations=[];
+  r.factionRelations.push({targetId:e.target.value,type:'neutral',tension:1});
+  e.target.value='';
+  saveState(); renderFactionRelations(r); populateFactionRelPick(r);
+};
 document.getElementById('ep-tag').onchange=e=>editFieldChanged('tag',e.target.value);
 document.getElementById('ep-color').oninput=e=>editFieldChanged('color',e.target.value);
 document.getElementById('ep-opacity').oninput=e=>{
@@ -2767,8 +2933,9 @@ document.addEventListener('keydown',e=>{
       snapshot(); state.regions=state.regions.filter(x=>x.id!==selectedId);
       selectRegion(null); saveState(); renderSvg(); renderSidebar(); return;
     }
-    if(e.key==='p'||e.key==='P'){ setTool('polygon',false); return; }
-    if(e.key==='k'||e.key==='K'){ setTool('polygon',true); return; }
+    if(e.key==='p'||e.key==='P'){ setTool('polygon',false,false); return; }
+    if(e.key==='k'||e.key==='K'){ setTool('polygon',true,false); return; }
+    if(e.key==='f'||e.key==='F'){ setTool('polygon',false,true); return; }
     if(e.key==='l'||e.key==='L'){ setTool('label'); return; }
     if(e.key==='b'||e.key==='B'){ toggleLoreBrowser(); return; }
     if(e.key==='?'){ toggleShortcuts(); return; }
@@ -2873,6 +3040,8 @@ function generatePlayerExport(){
     isTerritory:r.isTerritory||false, territoryDisplay:r.territoryDisplay||'filled',
     ruler:r.ruler||'', government:r.government||'', capital:r.capital||'',
     rulerRef:r.rulerRef||null, capitalRef:r.capitalRef||null,
+    isFaction:r.isFaction||false, factionLeader:r.factionLeader||'', factionGoal:r.factionGoal||'',
+    factionRelations:(r.factionRelations||[]),
   }));
 
   const data=JSON.stringify({imgW:state.imgW,imgH:state.imgH,imageB64:state.imageB64,regions:exportRegions,partyMarker:state.partyMarker||{active:false}});
@@ -3051,6 +3220,16 @@ function settlementsInTerritoryExp(territory){
     return pointInPoly(px,py,territory.points);
   });
 }
+function settlementsInFactionExp(faction){
+  return MAP_DATA.regions.filter(r=>{
+    if(r.id===faction.id||r.isFaction||r.isTerritory||r.kind==='label'||r.kind==='road'||!r.explored) return false;
+    let px,py;
+    if(r.kind==='pin'){ px=r.px; py=r.py; }
+    else if(r.kind==='polygon'){ px=r.points.reduce((s,[x])=>s+x,0)/r.points.length; py=r.points.reduce((s,[,y])=>s+y,0)/r.points.length; }
+    else return false;
+    return pointInPoly(px,py,faction.points);
+  });
+}
 function entitiesInTerritoryExp(territory){
   const settlements=settlementsInTerritoryExp(territory);
   const npcs=[], buildings=[];
@@ -3138,14 +3317,16 @@ function renderMap(){
   defs.innerHTML='<filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
   mapSvg.appendChild(defs);
   const iconSize=Math.max(20,Math.min(W,H)*0.022);
+  const mapFactions=MAP_DATA.regions.filter(r=>r.kind==='polygon'&&r.isFaction);
   const mapTerritories=MAP_DATA.regions.filter(r=>r.kind==='polygon'&&r.isTerritory);
-  const mapOthers=MAP_DATA.regions.filter(r=>!(r.kind==='polygon'&&r.isTerritory));
-  [...mapTerritories,...mapOthers].forEach(r=>{
+  const mapOthers=MAP_DATA.regions.filter(r=>!(r.kind==='polygon'&&(r.isTerritory||r.isFaction)));
+  [...mapFactions,...mapTerritories,...mapOthers].forEach(r=>{
     const fOp=r.fillOpacity??1;
     if(r.kind==='polygon'){
       const pts=r.points.map(([x,y])=>x*W+','+y*H).join(' ');
       const isTerritory=!!r.isTerritory;
-      const dispMode=isTerritory?(r.territoryDisplay||'filled'):'filled';
+      const isFaction=!!r.isFaction;
+      const dispMode=(isTerritory||isFaction)?(r.territoryDisplay||'filled'):'filled';
       if(dispMode!=='hidden'){
         const poly=svgEl('polygon');
         poly.setAttribute('points',pts);
@@ -3156,6 +3337,7 @@ function renderMap(){
         poly.setAttribute('stroke',r.explored?r.color:'#444');
         poly.setAttribute('stroke-width',isTerritory?2:1.5);poly.setAttribute('vector-effect','non-scaling-stroke');
         if(isTerritory) poly.setAttribute('stroke-dasharray',r.explored?'13 6':'6 3');
+        else if(isFaction) poly.setAttribute('stroke-dasharray','4 4');
         else if(!r.explored) poly.setAttribute('stroke-dasharray','6 3');
         poly.style.cursor='pointer';
         poly.addEventListener('mouseenter',()=>{poly.setAttribute('fill',hoverFill);poly.setAttribute('filter','url(#glow)');});
@@ -3355,12 +3537,53 @@ function showPopup(r,cx,cy){
             infoHtml+='<div class="kingdom-settlements">'+terrBuildings.map(({entity,parent})=>'<span class="ks-chip" data-nav-target-id="'+parent.id+'" data-nav-entity-id="'+entity.id+'" data-nav-entity-type="building">'+escH(entity.name||'Unnamed')+'</span>').join('')+'</div>';
           }
         }
+        if(r.isFaction){
+          const fi=[];
+          if(r.factionLeader) fi.push('<div><span class="ki-label">Leader</span><span class="ki-val">'+escH(r.factionLeader)+'</span></div>');
+          if(r.factionGoal) fi.push('<div><span class="ki-label">Goal</span><span class="ki-val">'+escH(r.factionGoal)+'</span></div>');
+          if(fi.length) infoHtml+='<div class="kingdom-info">'+fi.join('')+'</div>';
+          const relColors={ally:'#27ae60',neutral:'#7f8c8d',rival:'#e67e22',enemy:'#c0392b'};
+          const rels=(r.factionRelations||[]).map(rel=>{
+            const tf=MAP_DATA.regions.find(x=>x.id===rel.targetId&&x.isFaction&&x.explored);
+            if(!tf) return '';
+            const col=relColors[rel.type]||'#7f8c8d';
+            return '<span class="ks-chip" data-faction-id="'+tf.id+'" style="cursor:pointer;border-color:'+col+';color:'+col+'">'+escH(tf.name)+' <small>('+rel.type+')</small></span>';
+          }).filter(Boolean);
+          if(rels.length){
+            infoHtml+='<div class="ki-label" style="margin-bottom:4px">Relations with other Factions</div>';
+            infoHtml+='<div class="kingdom-settlements" style="margin-bottom:8px">'+rels.join('')+'</div>';
+          }
+          const fSetts=settlementsInFactionExp(r);
+          if(fSetts.length){
+            infoHtml+='<div class="ki-label" style="margin-bottom:4px">Under Faction Influence</div>';
+            infoHtml+='<div class="kingdom-settlements">'+fSetts.map(s=>'<span class="ks-chip" data-settlement-id="'+s.id+'">'+escH(s.name)+'</span>').join('')+'</div>';
+          }
+        }
+        if(!r.isFaction){
+          let locPx,locPy;
+          if(r.kind==='pin'){ locPx=r.px; locPy=r.py; }
+          else if(r.kind==='polygon'){ locPx=r.points.reduce((s,[x])=>s+x,0)/r.points.length; locPy=r.points.reduce((s,[,y])=>s+y,0)/r.points.length; }
+          if(locPx!==undefined){
+            const ctrlF=MAP_DATA.regions.filter(f=>f.kind==='polygon'&&f.isFaction&&f.explored&&pointInPoly(locPx,locPy,f.points));
+            if(ctrlF.length){
+              infoHtml+='<div class="ki-label" style="margin-bottom:4px">Faction Influence</div>';
+              infoHtml+='<div class="kingdom-settlements" style="margin-bottom:8px">'+ctrlF.map(f=>'<span class="ks-chip" data-faction-id="'+f.id+'" style="cursor:pointer;color:'+f.color+'">'+escH(f.name)+'</span>').join('')+'</div>';
+            }
+          }
+        }
         infoHtml+='<div class="popup-lore">'+renderMarkdown(r.publicLore,resolveWikilink)+'</div>';
         pane.innerHTML=infoHtml;
         pane.querySelectorAll('[data-settlement-id]').forEach(chip=>{
           chip.addEventListener('click',e=>{
             e.stopPropagation();
             const target=MAP_DATA.regions.find(x=>x.id===chip.dataset.settlementId);
+            if(target) showPopup(target,cx,cy);
+          });
+        });
+        pane.querySelectorAll('[data-faction-id]').forEach(chip=>{
+          chip.addEventListener('click',e=>{
+            e.stopPropagation();
+            const target=MAP_DATA.regions.find(x=>x.id===chip.dataset.factionId);
             if(target) showPopup(target,cx,cy);
           });
         });
@@ -3631,6 +3854,7 @@ function lbMetaHTML(r,isLabel){
   chips.push(r.explored?'<span class="lb-chip">✓ Explored</span>':'<span class="lb-chip" style="color:#888">🌫 Unexplored</span>');
   if(!isLabel){
     if(r.isTerritory) chips.push('<span class="lb-chip" style="color:var(--accent)">👑 Territory / Kingdom</span>');
+    if(r.isFaction) chips.push('<span class="lb-chip" style="color:#ca6f1e">⚔ Faction</span>');
     if(r.npcs?.length) chips.push('<span class="lb-chip">👤 '+r.npcs.length+' NPC'+(r.npcs.length!==1?'s':'')+'</span>');
     if(r.buildings?.length) chips.push('<span class="lb-chip">🏛 '+r.buildings.length+' building'+(r.buildings.length!==1?'s':'')+'</span>');
     const kindLabel={polygon:'⬡ Region',pin:'📍 Pin',road:'🛤 Road'}[r.kind]||'';
@@ -3727,6 +3951,31 @@ function renderLbMain(){
         +'</div></div>';
     }
   }
+  if(!isLabel&&r.isFaction){
+    html+='<div class="lb-section">'
+      +'<div class="lb-section-heading">⚔ Faction Details</div>'
+      +'<div class="lb-kingdom-grid">'
+      +'<div><span class="lb-field-label">Leader</span><input class="lb-entity-input" id="lb-edit-faction-leader" value="'+escHtml(r.factionLeader||'')+'" placeholder="Unknown"></div>'
+      +'<div><span class="lb-field-label">Goal / Purpose</span><input class="lb-entity-input" id="lb-edit-faction-goal" value="'+escHtml(r.factionGoal||'')+'" placeholder="Unknown"></div>'
+      +'</div></div>';
+    const fSetts=settlementsInFaction(r);
+    if(fSetts.length){
+      html+='<div class="lb-section"><div class="lb-section-heading">Settlements within these Borders ('+fSetts.length+')</div>'
+        +'<div class="lb-settlements-row">'
+        +fSetts.map(s=>'<span class="lb-chip lb-settlement-chip" data-settlement-id="'+s.id+'">●&nbsp;'+escHtml(s.name)+'</span>').join('')
+        +'</div></div>';
+    }
+    if((r.factionRelations||[]).length){
+      const relColors={ally:'#27ae60',neutral:'#7f8c8d',rival:'#e67e22',enemy:'#c0392b'};
+      html+='<div class="lb-section"><div class="lb-section-heading">Relations with other Factions</div><div class="lb-settlements-row">'
+        +(r.factionRelations||[]).map(rel=>{
+          const tf=state.regions.find(x=>x.id===rel.targetId); if(!tf) return '';
+          const col=relColors[rel.type]||'#7f8c8d';
+          return '<span class="lb-chip lb-settlement-chip" data-settlement-id="'+tf.id+'" style="color:'+col+';border-color:'+col+'88">●&nbsp;'+escHtml(tf.name)+' <small>('+rel.type+')</small></span>';
+        }).filter(Boolean).join('')
+        +'</div></div>';
+    }
+  }
   if(!isLabel&&r.npcs?.length){
     html+='<div class="lb-section"><div class="lb-section-heading">NPCs ('+r.npcs.length+')</div>';
     r.npcs.forEach(n=>{ html+=lbEntityHTML(n,'npc'); });
@@ -3749,6 +3998,10 @@ function renderLbMain(){
     const el=content.querySelector('#lb-edit-'+f);
     if(el) el.oninput=()=>debounceLb(rid,f,el.value);
   });
+  const flEl=content.querySelector('#lb-edit-faction-leader');
+  if(flEl) flEl.oninput=()=>debounceLb(rid,'factionLeader',flEl.value);
+  const fgEl=content.querySelector('#lb-edit-faction-goal');
+  if(fgEl) fgEl.oninput=()=>debounceLb(rid,'factionGoal',fgEl.value);
   content.querySelectorAll('[data-settlement-id]').forEach(chip=>{
     chip.addEventListener('click',()=>{
       lbSelectedId=chip.dataset.settlementId; renderLbList(); renderLbMain();
