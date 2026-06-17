@@ -322,6 +322,16 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .status-tags-row{display:flex;flex-wrap:wrap;gap:5px}
 .stag-btn{padding:3px 10px;border-radius:12px;border:1px solid var(--border);cursor:pointer;font-size:11px;color:var(--text-dim);background:transparent;transition:.15s;font-family:inherit}
 .stag-btn:hover{border-color:var(--text-dim);color:var(--text)}
+.rumours-header{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.rumours-header label{margin:0;flex:1}
+.rumour-card{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;padding:8px;margin-bottom:6px}
+.rumour-card-row{display:flex;gap:6px;align-items:flex-start}
+.truth-btn{width:26px;height:26px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;transition:.15s;line-height:1}
+.truth-btn:hover{background:rgba(255,255,255,.08)}
+.rumour-text{flex:1;resize:vertical;min-height:48px}
+.rumour-del{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;padding:2px;flex-shrink:0;line-height:1}
+.rumour-del:hover{color:var(--danger)}
+.rumour-dm-note{width:100%;margin-top:5px;resize:none;font-size:11px;color:var(--dm-red);background:rgba(200,80,80,.07);border:1px solid rgba(200,80,80,.25);border-radius:3px;padding:4px 6px;font-family:inherit}
 
 /* LORE BROWSER — EDITABLE FIELDS */
 .lb-edit-name{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--accent);font-variant:small-caps;letter-spacing:.06em;font-size:26px;width:100%;padding:2px 0;font-family:inherit;transition:border-color .2s;cursor:text;display:block}
@@ -566,6 +576,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
           <div class="field">
             <label>Public Lore</label>
             <textarea id="ep-lore" placeholder="What players see when they click this location…"></textarea>
+          </div>
+          <div class="field" id="ep-rumours-field">
+            <div class="rumours-header">
+              <label>Rumours</label>
+              <button class="btn sm" id="btn-add-rumour" type="button">+ Add</button>
+            </div>
+            <div id="ep-rumours-list"></div>
           </div>
           <div class="dm-notes-wrap">
             <div class="dm-badge">🔒 DM Notes — never exported</div>
@@ -915,6 +932,7 @@ function migrateRegions(){
     if(!r.factionRelations) r.factionRelations=[];
     if(!('factionLeader' in r)) r.factionLeader='';
     if(!('factionGoal' in r)) r.factionGoal='';
+    if(!r.rumours) r.rumours=[];
     // Normalize territory tag: old saves used 'Kingdom', new ones use 'Territory'.
     if(r.isTerritory && r.tag==='Kingdom') r.tag='Territory';
     if(r.isTerritory && r.tag!=='Territory'){ r._prevTag=r.tag; r.tag='Territory'; r.color=TYPE_COLORS.Territory||r.color; }
@@ -1315,7 +1333,7 @@ function newRegion(kind, tag){
   const defaultName = kind==='pin'?t+' Pin':kind==='road'?'Road':kind==='label'?'Label':'Region';
   const ps = kind==='pin' ? (defaultPinSizes[t]??1) : 1;
   const rs = kind==='road' ? defaultRoadSize : 1;
-  return { id:'r'+(state.nextId++), kind, name:defaultName, tag:t, color:kind==='label'?'#e8d5a0':(TYPE_COLORS[t]||TYPE_COLORS.Other), publicLore:'', dmNotes:'', explored:true, coverImage:null, fillOpacity:1, pinSize:ps, roadSize:rs, fontSize:1, fontStyle:'normal', points:[], px:.5, py:.5, npcs:[], buildings:[], statusTags:[], isTerritory:false, territoryDisplay:'filled', ruler:'', government:'', capital:'', rulerRef:null, capitalRef:null, isFaction:false, factionLeader:'', factionGoal:'', factionRelations:[] };
+  return { id:'r'+(state.nextId++), kind, name:defaultName, tag:t, color:kind==='label'?'#e8d5a0':(TYPE_COLORS[t]||TYPE_COLORS.Other), publicLore:'', dmNotes:'', explored:true, coverImage:null, fillOpacity:1, pinSize:ps, roadSize:rs, fontSize:1, fontStyle:'normal', points:[], px:.5, py:.5, npcs:[], buildings:[], statusTags:[], isTerritory:false, territoryDisplay:'filled', ruler:'', government:'', capital:'', rulerRef:null, capitalRef:null, isFaction:false, factionLeader:'', factionGoal:'', factionRelations:[], rumours:[] };
 }
 
 function setTool(tool, asTerritory, asFaction){
@@ -2299,6 +2317,10 @@ function repopulateEditPanel(){
     sizeField.style.display='none'; continueBtn.style.display='none';
   }
   updateSwatches(r.tag);
+  // Rumours section (hidden for labels)
+  const rumField=document.getElementById('ep-rumours-field');
+  if(rumField) rumField.style.display=isLabel?'none':'';
+  if(!isLabel) renderRumoursList(r);
   // counts and entity lists (skip for labels)
   if(!isLabel){
     document.getElementById('npc-count').textContent=r.npcs.length||'';
@@ -2306,6 +2328,46 @@ function repopulateEditPanel(){
     renderEntityList('npc',r.npcs); renderEntityList('building',r.buildings);
   }
 }
+
+function renderRumoursList(r){
+  const list=document.getElementById('ep-rumours-list');
+  if(!list) return;
+  list.innerHTML='';
+  (r.rumours||[]).forEach((rum,i)=>{
+    const card=document.createElement('div'); card.className='rumour-card';
+    const truthIcon=rum.isTrue===true?'🟢':rum.isTrue===false?'🔴':'⚪';
+    const titleAttr=rum.isTrue===true?'True':'false'===String(rum.isTrue)?'False':'Unknown';
+    const row=document.createElement('div'); row.className='rumour-card-row';
+    const tb=document.createElement('button'); tb.className='truth-btn'; tb.title='Toggle truth ('+titleAttr+'): ⚪ unknown → 🟢 true → 🔴 false'; tb.textContent=truthIcon;
+    tb.onclick=()=>{
+      const cur=r.rumours[i].isTrue;
+      snapshot();
+      r.rumours[i].isTrue=cur===null?true:cur===true?false:null;
+      saveState(); renderRumoursList(r);
+    };
+    const ta=document.createElement('textarea'); ta.className='text-input rumour-text'; ta.placeholder='What rumour do the players hear about this place?'; ta.value=rum.text||'';
+    ta.oninput=e=>{ r.rumours[i].text=e.target.value; saveState(); };
+    const del=document.createElement('button'); del.className='rumour-del'; del.title='Delete rumour'; del.textContent='✕';
+    del.onclick=()=>{ snapshot(); r.rumours.splice(i,1); saveState(); renderRumoursList(r); };
+    row.appendChild(tb); row.appendChild(ta); row.appendChild(del);
+    card.appendChild(row);
+    const dmNoteTA=document.createElement('textarea'); dmNoteTA.className='rumour-dm-note'; dmNoteTA.placeholder='DM note — is this true? Who planted it? (never exported)'; dmNoteTA.rows=1; dmNoteTA.value=rum.dmNote||'';
+    dmNoteTA.oninput=e=>{ r.rumours[i].dmNote=e.target.value; autoResize(e.target); saveState(); };
+    autoResize(dmNoteTA);
+    card.appendChild(dmNoteTA);
+    list.appendChild(card);
+  });
+}
+
+document.getElementById('btn-add-rumour').onclick=()=>{
+  const r=state.regions.find(x=>x.id===selectedId); if(!r) return;
+  snapshot();
+  r.rumours.push({id:uid(), text:'', isTrue:null, dmNote:''});
+  saveState(); renderRumoursList(r);
+  // focus the new textarea
+  const cards=document.querySelectorAll('#ep-rumours-list .rumour-text');
+  if(cards.length) cards[cards.length-1].focus();
+};
 
 function updateSwatches(tag){
   const row=document.getElementById('ep-swatches');
@@ -3042,6 +3104,7 @@ function generatePlayerExport(){
     rulerRef:r.rulerRef||null, capitalRef:r.capitalRef||null,
     isFaction:r.isFaction||false, factionLeader:r.factionLeader||'', factionGoal:r.factionGoal||'',
     factionRelations:(r.factionRelations||[]),
+    rumours:(r.rumours||[]).filter(rum=>rum.text&&rum.text.trim()).map(rum=>({text:rum.text})),
   }));
 
   const data=JSON.stringify({imgW:state.imgW,imgH:state.imgH,imageB64:state.imageB64,regions:exportRegions,partyMarker:state.partyMarker||{active:false}});
@@ -3108,6 +3171,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .popup-lore li,.pe-desc li{margin:2px 0}
 .popup-lore hr,.pe-desc hr{border:none;border-top:1px solid #3a2a0a;margin:12px 0}
 .popup-lore strong,.pe-desc strong{color:#e8d5a0}
+.rumours-section{margin-top:12px;padding-top:10px;border-top:1px solid #3a2a0a}
+.rumours-list{list-style:none;margin:0;padding:0}
+.rumours-list li{position:relative;padding:5px 10px 5px 22px;margin-bottom:5px;font-size:12px;color:#a89060;font-style:italic;line-height:1.5}
+.rumours-list li::before{content:'"';position:absolute;left:6px;color:var(--accent);font-size:16px;line-height:1;top:3px}
 .md-empty{color:#6a5a3a;font-style:italic}
 .md-wikilink{color:var(--accent);font-weight:600}
 .md-wikilink.resolved{cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
@@ -3572,6 +3639,11 @@ function showPopup(r,cx,cy){
           }
         }
         infoHtml+='<div class="popup-lore">'+renderMarkdown(r.publicLore,resolveWikilink)+'</div>';
+        if(r.rumours&&r.rumours.length){
+          infoHtml+='<div class="rumours-section"><div class="ki-label" style="margin-bottom:6px">Rumours heard about this place</div><ul class="rumours-list">';
+          r.rumours.forEach(rum=>{ infoHtml+='<li>'+escH(rum.text)+'</li>'; });
+          infoHtml+='</ul></div>';
+        }
         pane.innerHTML=infoHtml;
         pane.querySelectorAll('[data-settlement-id]').forEach(chip=>{
           chip.addEventListener('click',e=>{
