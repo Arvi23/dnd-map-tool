@@ -638,6 +638,18 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
             <div class="knob"></div>
             <span class="terr-label">Hide border</span>
           </div>
+          <div class="field" id="ep-custompin-field" style="display:none">
+            <label>Custom icon</label>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <div id="custompin-preview" style="width:38px;height:38px;border-radius:6px;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:22px;line-height:1"></div>
+              <div style="display:flex;flex-direction:column;gap:4px;flex:1">
+                <button class="btn sm" id="btn-custompin-img" style="width:100%">Upload image…</button>
+                <input type="text" id="custompin-emoji" maxlength="4" placeholder="…or paste an emoji" style="width:100%;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:6px 8px;font-family:inherit;font-size:15px;text-align:center">
+              </div>
+            </div>
+            <button class="btn sm danger" id="btn-custompin-clear" style="display:none;width:100%">↺ Use default type icon</button>
+            <input type="file" id="custompin-file" accept="image/*" style="display:none">
+          </div>
           <button class="btn sm" id="btn-reset-label" style="display:none;width:100%;margin-bottom:10px">↺ Reset label position</button>
           <div class="field" id="ep-roadstyle-field" style="display:none">
             <label>Road Type</label>
@@ -780,7 +792,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
   <div class="modal-box">
     <button class="modal-close" id="rumor-close">✕</button>
     <h2>💬 Rumor Tracker</h2>
-    <p class="stub-intro">Every rumour in the world, grouped by location. World rumours aren't tied to any place. Players see the rumour and its expandable details — truth (🟢/🔴/⚪) and DM notes stay with you.</p>
+    <p class="stub-intro">Every rumour in the world, grouped by location. Toggle 👁 to <b>reveal</b> a rumour to players — only revealed rumours appear in the exported handout, so a location being on the map no longer leaks its whispers. 🚫 keeps it DM-only. Truth (🟢/🔴/⚪) and DM notes never export.</p>
     <div class="rt-controls">
       <label>Add to</label>
       <select id="rumor-add-loc"></select>
@@ -1024,7 +1036,8 @@ function compressImage(b64, maxDim){
       const c = document.createElement('canvas');
       c.width = Math.round(w*scale); c.height = Math.round(h*scale);
       c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-      resolve(c.toDataURL('image/jpeg',0.82));
+      const keepAlpha = /^data:image\/(png|webp|gif)/i.test(b64);
+      resolve(keepAlpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg',0.82));
     };
     img.src = b64;
   });
@@ -1067,6 +1080,7 @@ function migrateRegions(){
     if(typeof rm.details!=='string') rm.details='';
     if(!('isTrue' in rm)) rm.isTrue=null;
     if(typeof rm.dmNote!=='string') rm.dmNote='';
+    if(typeof rm.revealed!=='boolean') rm.revealed=true;
   };
   state.worldRumours.forEach(normRumour);
   if(!state.partyMarker) state.partyMarker={active:false,px:.5,py:.5,size:1};
@@ -1075,6 +1089,8 @@ function migrateRegions(){
     if(!r.npcs) r.npcs=[];
     if(!r.buildings) r.buildings=[];
     if(!('coverImage' in r)) r.coverImage=null;
+    if(!('customIcon' in r)) r.customIcon=null;
+    if(!('customEmoji' in r)) r.customEmoji=null;
     if(!('fillOpacity' in r)) r.fillOpacity=1;
     if(!('pinSize' in r)) r.pinSize=1;
     if(!('roadSize' in r)) r.roadSize=1;
@@ -1365,6 +1381,11 @@ document.addEventListener('mousemove',e=>{
   if(moveState){
     const {nx,ny}=screenToNorm(lastMouseScreen.x,lastMouseScreen.y);
     const dnx=nx-moveState.msNx, dny=ny-moveState.msNy;
+    if(moveState.deferred && !moveState.started){
+      const thx=(4/viewport.scale)/state.imgW, thy=(4/viewport.scale)/state.imgH;
+      if(Math.abs(dnx)<thx && Math.abs(dny)<thy) return;
+      moveState.started=true; snapshot();
+    }
     const r=state.regions.find(x=>x.id===moveState.id);
     if(r){
       if(r.kind==='polygon'||r.kind==='road'){
@@ -1648,7 +1669,7 @@ function newRegion(kind, tag){
   const defaultName = kind==='pin'?t+' Pin':kind==='road'?'Road':kind==='label'?'Label':'Region';
   const ps = kind==='pin' ? (defaultPinSizes[t]??1) : 1;
   const rs = kind==='road' ? defaultRoadSize : 1;
-  return { id:'r'+(state.nextId++), kind, name:defaultName, tag:t, color:kind==='label'?'#e8d5a0':(TYPE_COLORS[t]||TYPE_COLORS.Other), publicLore:'', dmNotes:'', explored:true, coverImage:null, fillOpacity:1, pinSize:ps, roadSize:rs, roadStyle:'road', smooth:false, showRouteLabel:false, labelOffset:50, labelDy:0, labelStraight:0, labelFlip:false, fromRef:null, toRef:null, fontSize:1, fontStyle:'normal', points:[], px:.5, py:.5, npcs:[], buildings:[], statusTags:[], isTerritory:false, territoryDisplay:'filled', ruler:'', government:'', capital:'', rulerRef:null, capitalRef:null, isFaction:false, factionLeader:'', factionGoal:'', factionRelations:[], rumours:[], firstGlimpse:'', labelScale:1, labelDx:0, labelDy:0, showIcon:false, hideBorder:false, iconOpacity:1, iconScale:1, labelStyle:'normal' };
+  return { id:'r'+(state.nextId++), kind, name:defaultName, tag:t, color:kind==='label'?'#e8d5a0':(TYPE_COLORS[t]||TYPE_COLORS.Other), publicLore:'', dmNotes:'', explored:true, coverImage:null, customIcon:null, customEmoji:null, fillOpacity:1, pinSize:ps, roadSize:rs, roadStyle:'road', smooth:false, showRouteLabel:false, labelOffset:50, labelDy:0, labelStraight:0, labelFlip:false, fromRef:null, toRef:null, fontSize:1, fontStyle:'normal', points:[], px:.5, py:.5, npcs:[], buildings:[], statusTags:[], isTerritory:false, territoryDisplay:'filled', ruler:'', government:'', capital:'', rulerRef:null, capitalRef:null, isFaction:false, factionLeader:'', factionGoal:'', factionRelations:[], rumours:[], firstGlimpse:'', labelScale:1, labelDx:0, labelDy:0, showIcon:false, hideBorder:false, iconOpacity:1, iconScale:1, labelStyle:'normal' };
 }
 
 function setTool(tool, asTerritory, asFaction){
@@ -1691,17 +1712,24 @@ function onShapeClick(e){
 
 function onShapeMousedown(e,id){
   if(e.button!==0||activeTool) return;
-  if(!e.ctrlKey) return;
-  e.preventDefault(); e.stopPropagation();
-  selectRegion(id);
   const r=state.regions.find(x=>x.id===id); if(!r) return;
+  e.stopPropagation();
+  // Select immediately on press — reliable, doesn't depend on a click event that a
+  // mid-press re-render could swallow.
+  if(selectedId!==id) selectRegion(id);
+  // Drag: pins move freely; polygons/roads/labels need Ctrl, so a plain click just selects.
+  const canDrag = (r.kind==='pin') || e.ctrlKey;
+  if(!canDrag) return;
+  e.preventDefault();
   const rect=mapContainer.getBoundingClientRect();
   const {nx,ny}=screenToNorm(e.clientX-rect.left,e.clientY-rect.top);
-  snapshot();
+  // Deferred: snapshot + move only once the pointer passes a small threshold, so a
+  // click never nudges the shape or spams undo history.
   moveState={
     id, msNx:nx, msNy:ny,
     origPoints: (r.kind==='polygon'||r.kind==='road') ? r.points.map(p=>[p[0],p[1]]) : null,
-    origPx:r.px, origPy:r.py
+    origPx:r.px, origPy:r.py,
+    deferred:true, started:false
   };
   mapContainer.style.cursor='grabbing';
 }
@@ -1781,6 +1809,22 @@ function buildPinPalette(){
     });
     grid.appendChild(item);
   });
+  // Custom pin tile (+) — drag onto the map to drop a blank custom pin
+  const ci=document.createElement('div');
+  ci.className='palette-item';
+  ci.draggable=true;
+  ci.dataset.type='__custom__';
+  ci.title='Drag to place a custom pin (set its image or emoji after)';
+  const csvg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  csvg.setAttribute('viewBox','0 0 20 20');
+  const cg=document.createElementNS('http://www.w3.org/2000/svg','g');
+  cg.setAttribute('fill','none'); cg.setAttribute('stroke','var(--accent)'); cg.setAttribute('stroke-width','2'); cg.setAttribute('stroke-linecap','round');
+  cg.innerHTML='<circle cx="10" cy="10" r="8" stroke-dasharray="2.5 2.5"/><line x1="10" y1="6" x2="10" y2="14"/><line x1="6" y1="10" x2="14" y2="10"/>';
+  csvg.appendChild(cg);
+  const clbl=document.createElement('span'); clbl.textContent='Custom';
+  ci.appendChild(csvg); ci.appendChild(clbl);
+  ci.addEventListener('dragstart',e=>{ e.dataTransfer.setData('text/plain','__custom__'); e.dataTransfer.effectAllowed='copy'; });
+  grid.appendChild(ci);
 }
 
 // ============================================================
@@ -1830,6 +1874,14 @@ mapContainer.addEventListener('drop',e=>{
   if(type==='__party__'){
     state.partyMarker={active:true,px:nx,py:ny};
     saveState(); renderSvg(); return;
+  }
+  if(type==='__custom__'){
+    snapshot();
+    const r=newRegion('pin','Other'); r.px=nx; r.py=ny; r.name='Custom Pin';
+    state.regions.push(r); saveState(); renderSvg(); renderSidebar();
+    selectRegion(r.id);
+    showStatus('Custom pin placed — upload an image or paste an emoji in the edit panel');
+    return;
   }
   if(type.startsWith('__pending__:')){
     const name=type.slice('__pending__:'.length);
@@ -1898,13 +1950,15 @@ function renderSvg(){
       if(showShape){
         const poly=makeSvgEl('polygon');
         poly.setAttribute('points',pts);
+        const _pbase = hexAlpha(r.color,fOp*(r.explored?(isSel?.45:.22):.5));
+        const _phover = hexAlpha(r.color,fOp*(r.explored?.45:.5));
         if(dispMode==='border'){
           poly.setAttribute('fill','transparent');
           poly.setAttribute('pointer-events','visibleStroke');
         } else {
-          poly.setAttribute('fill',hexAlpha(r.color,fOp*(r.explored?(isSel||isHov?.45:.22):.5)));
+          poly.setAttribute('fill',_pbase);
         }
-        if(r.hideBorder&&dispMode!=='border'&&!isSel&&!isHov){
+        if(r.hideBorder&&dispMode!=='border'&&!isSel){
           poly.setAttribute('stroke','none');
         } else {
           poly.setAttribute('stroke',r.explored?r.color:'#555');
@@ -1914,14 +1968,26 @@ function renderSvg(){
           else if(isFaction) poly.setAttribute('stroke-dasharray','4 4');
           else if(!r.explored) poly.setAttribute('stroke-dasharray','6 3');
         }
-        if(isSel||isHov) poly.setAttribute('filter','url(#glow)');
+        if(isSel) poly.setAttribute('filter','url(#glow)');
         poly.style.cursor='pointer'; poly.dataset.id=r.id;
         poly.addEventListener('click',onShapeClick);
         poly.addEventListener('mousedown',e=>{ if(e.button===2){e.stopPropagation();return;} onShapeMousedown(e,r.id); });
         poly.addEventListener('contextmenu',e=>onShapeContextMenu(e,r.id));
-        poly.addEventListener('mouseenter',()=>{ hoveredId=r.id; renderSvg(); });
-        poly.addEventListener('mouseleave',()=>{ hoveredId=null; renderSvg(); });
+        poly.addEventListener('mouseenter',()=>{ hoveredId=r.id; if(dispMode!=='border') poly.setAttribute('fill',_phover); poly.setAttribute('filter','url(#glow)'); });
+        poly.addEventListener('mouseleave',()=>{ if(hoveredId===r.id) hoveredId=null; if(dispMode!=='border') poly.setAttribute('fill',_pbase); if(!isSel) poly.removeAttribute('filter'); });
         mapSvg.appendChild(poly);
+        // Wide invisible hit-band so the thin outline (and border/outline mode) is easy to click
+        const polyHit=makeSvgEl('polygon');
+        polyHit.setAttribute('points',pts); polyHit.setAttribute('fill',dispMode==='border'?'none':'transparent');
+        polyHit.setAttribute('stroke','transparent'); polyHit.setAttribute('stroke-width',14);
+        polyHit.setAttribute('vector-effect','non-scaling-stroke');
+        polyHit.setAttribute('pointer-events','stroke'); polyHit.style.cursor='pointer'; polyHit.dataset.id=r.id;
+        polyHit.addEventListener('click',onShapeClick);
+        polyHit.addEventListener('mousedown',e=>{ if(e.button===2){e.stopPropagation();return;} onShapeMousedown(e,r.id); });
+        polyHit.addEventListener('contextmenu',e=>onShapeContextMenu(e,r.id));
+        polyHit.addEventListener('mouseenter',()=>{ hoveredId=r.id; if(dispMode!=='border') poly.setAttribute('fill',_phover); poly.setAttribute('filter','url(#glow)'); });
+        polyHit.addEventListener('mouseleave',()=>{ if(hoveredId===r.id) hoveredId=null; if(dispMode!=='border') poly.setAttribute('fill',_pbase); if(!isSel) poly.removeAttribute('filter'); });
+        mapSvg.appendChild(polyHit);
 
         if(!r.explored){
           const fog=makeSvgEl('polygon'); fog.setAttribute('points',pts);
@@ -1936,12 +2002,26 @@ function renderSvg(){
       let plabelY=cy;
       if(r.showIcon&&r.explored){
         const isz=Math.max(14,Math.min(34,W*0.022))*(r.iconScale??1);
-        const ig=makeSvgEl('g');
-        ig.setAttribute('transform','translate('+(cx+pox-isz/2)+','+(cy+poy-isz*0.5)+') scale('+(isz/20)+')');
-        ig.setAttribute('fill',r.explored?r.color:'#555');
-        ig.setAttribute('opacity',(r.iconOpacity??1)<0.05?0.05:(r.iconOpacity??1)); ig.setAttribute('pointer-events','none');
-        ig.innerHTML=PIN_ICONS[r.tag]||PIN_ICONS.Other;
-        mapSvg.appendChild(ig);
+        const _op=(r.iconOpacity??1)<0.05?0.05:(r.iconOpacity??1);
+        if(r.customIcon){
+          const im=makeSvgEl('image');
+          im.setAttributeNS('http://www.w3.org/1999/xlink','href',r.customIcon); im.setAttribute('href',r.customIcon);
+          im.setAttribute('x',cx+pox-isz/2); im.setAttribute('y',cy+poy-isz*0.5); im.setAttribute('width',isz); im.setAttribute('height',isz);
+          im.setAttribute('preserveAspectRatio','xMidYMid meet'); im.setAttribute('opacity',_op); im.setAttribute('pointer-events','none');
+          mapSvg.appendChild(im);
+        } else if(r.customEmoji){
+          const et=makeSvgEl('text');
+          et.setAttribute('x',cx+pox); et.setAttribute('y',cy+poy); et.setAttribute('text-anchor','middle'); et.setAttribute('dominant-baseline','central');
+          et.setAttribute('font-size',isz); et.setAttribute('opacity',_op); et.setAttribute('pointer-events','none'); et.textContent=r.customEmoji;
+          mapSvg.appendChild(et);
+        } else {
+          const ig=makeSvgEl('g');
+          ig.setAttribute('transform','translate('+(cx+pox-isz/2)+','+(cy+poy-isz*0.5)+') scale('+(isz/20)+')');
+          ig.setAttribute('fill',r.explored?r.color:'#555');
+          ig.setAttribute('opacity',_op); ig.setAttribute('pointer-events','none');
+          ig.innerHTML=PIN_ICONS[r.tag]||PIN_ICONS.Other;
+          mapSvg.appendChild(ig);
+        }
         plabelY=cy+isz*0.55;
       }
       appendLabel(cx,plabelY,r,W);
@@ -2005,34 +2085,54 @@ function renderSvg(){
       const ring=makeSvgEl('circle');
       ring.setAttribute('cx',px); ring.setAttribute('cy',py);
       ring.setAttribute('r',pis*0.68);
-      if(r.hideBorder&&!isSel&&!isHov){
+      if(r.hideBorder&&!isSel){
         ring.setAttribute('fill','transparent'); ring.setAttribute('stroke','none');
       } else {
-        ring.setAttribute('fill',hexAlpha(col,fOp*(isSel||isHov?.25:.12)));
+        ring.setAttribute('fill',hexAlpha(col,fOp*(isSel?.25:.12)));
         ring.setAttribute('stroke',col);
         ring.setAttribute('stroke-width',isSel?2.5:1.5);
         ring.setAttribute('vector-effect','non-scaling-stroke');
-        if(isSel||isHov) ring.setAttribute('filter','url(#glow)');
+        if(isSel) ring.setAttribute('filter','url(#glow)');
       }
       ring.setAttribute('pointer-events','all');
-      ring.style.cursor='pointer'; ring.dataset.id=r.id;
+      ring.style.cursor='grab'; ring.dataset.id=r.id;
       ring.addEventListener('click',onShapeClick);
       ring.addEventListener('mousedown',e=>{ if(e.button===2){e.stopPropagation();return;} onShapeMousedown(e,r.id); });
       ring.addEventListener('contextmenu',e=>onShapeContextMenu(e,r.id));
-      ring.addEventListener('mouseenter',()=>{ hoveredId=r.id; renderSvg(); });
-      ring.addEventListener('mouseleave',()=>{ hoveredId=null; renderSvg(); });
+      ring.addEventListener('mouseenter',()=>{ hoveredId=r.id; ring.setAttribute('fill',hexAlpha(col,fOp*0.25)); ring.setAttribute('stroke',col); ring.setAttribute('stroke-width',isSel?2.5:1.5); ring.setAttribute('vector-effect','non-scaling-stroke'); ring.setAttribute('filter','url(#glow)'); });
+      ring.addEventListener('mouseleave',()=>{ if(hoveredId===r.id) hoveredId=null; if(r.hideBorder&&!isSel){ ring.setAttribute('fill','transparent'); ring.setAttribute('stroke','none'); ring.removeAttribute('filter'); } else { ring.setAttribute('fill',hexAlpha(col,fOp*(isSel?.25:.12))); ring.setAttribute('stroke',col); if(!isSel) ring.removeAttribute('filter'); } });
       mapSvg.appendChild(ring);
 
       // icon
       if(r.explored){
-        const iconG=makeSvgEl('g');
-        const is=pis*0.72;
-        iconG.setAttribute('transform',`translate(${px-is/2},${py-is/2}) scale(${is/20})`);
-        iconG.setAttribute('fill',col);
-        iconG.setAttribute('opacity',(r.iconOpacity??1)<0.05?0.05:(r.iconOpacity??1));
-        iconG.setAttribute('pointer-events','none');
-        iconG.innerHTML=PIN_ICONS[r.tag]||PIN_ICONS.Other;
-        mapSvg.appendChild(iconG);
+        const _op=(r.iconOpacity??1)<0.05?0.05:(r.iconOpacity??1);
+        if(r.customIcon){
+          const im=makeSvgEl('image');
+          const is=pis*1.0;
+          im.setAttributeNS('http://www.w3.org/1999/xlink','href',r.customIcon);
+          im.setAttribute('href',r.customIcon);
+          im.setAttribute('x',px-is/2); im.setAttribute('y',py-is/2);
+          im.setAttribute('width',is); im.setAttribute('height',is);
+          im.setAttribute('preserveAspectRatio','xMidYMid meet');
+          im.setAttribute('opacity',_op); im.setAttribute('pointer-events','none');
+          mapSvg.appendChild(im);
+        } else if(r.customEmoji){
+          const et=makeSvgEl('text');
+          et.setAttribute('x',px); et.setAttribute('y',py);
+          et.setAttribute('text-anchor','middle'); et.setAttribute('dominant-baseline','central');
+          et.setAttribute('font-size',pis*0.95); et.setAttribute('opacity',_op);
+          et.setAttribute('pointer-events','none'); et.textContent=r.customEmoji;
+          mapSvg.appendChild(et);
+        } else {
+          const iconG=makeSvgEl('g');
+          const is=pis*0.72;
+          iconG.setAttribute('transform',`translate(${px-is/2},${py-is/2}) scale(${is/20})`);
+          iconG.setAttribute('fill',col);
+          iconG.setAttribute('opacity',_op);
+          iconG.setAttribute('pointer-events','none');
+          iconG.innerHTML=PIN_ICONS[r.tag]||PIN_ICONS.Other;
+          mapSvg.appendChild(iconG);
+        }
       } else {
         const qt=makeSvgEl('text');
         qt.setAttribute('x',px); qt.setAttribute('y',py);
@@ -2056,7 +2156,7 @@ function renderSvg(){
       const smooth=!!(r.smooth||style.smooth);
       const Pp=r.points.map(([nx,ny])=>[nx*W,ny*H]);
       const d=roadPathD(Pp,smooth);
-      paintRoad(mapSvg,makeSvgEl,{d,Ppx:Pp,col,wPx,kind:style.kind,eff,id:r.id,name:r.name,showLabel:!!r.showRouteLabel,smooth,labelOffset:r.labelOffset,labelDy:r.labelDy,labelStraight:r.labelStraight,labelFlip:r.labelFlip,glow:(isSel||isHov)});
+      const primary=paintRoad(mapSvg,makeSvgEl,{d,Ppx:Pp,col,wPx,kind:style.kind,eff,id:r.id,name:r.name,showLabel:!!r.showRouteLabel,smooth,labelOffset:r.labelOffset,labelDy:r.labelDy,labelStraight:r.labelStraight,labelFlip:r.labelFlip,glow:isSel});
       const _lbl=mapSvg.querySelector('text[data-rdlabel="'+r.id+'"]');
       if(_lbl){ _lbl.style.cursor='move'; _lbl.style.pointerEvents='auto'; _lbl.setAttribute('title','Drag to reposition'); _lbl.addEventListener('mousedown',ev=>{ ev.stopPropagation(); ev.preventDefault(); startRoadLabelDrag(ev,r.id); }); }
       const hit=makeSvgEl('path');
@@ -2066,8 +2166,8 @@ function renderSvg(){
       hit.addEventListener('click',onShapeClick);
       hit.addEventListener('mousedown',e=>{ if(e.button===2){e.stopPropagation();return;} onShapeMousedown(e,r.id); });
       hit.addEventListener('contextmenu',e=>onShapeContextMenu(e,r.id));
-      hit.addEventListener('mouseenter',()=>{ hoveredId=r.id; renderSvg(); });
-      hit.addEventListener('mouseleave',()=>{ hoveredId=null; renderSvg(); });
+      hit.addEventListener('mouseenter',()=>{ hoveredId=r.id; if(primary) primary.setAttribute('filter','url(#glow)'); });
+      hit.addEventListener('mouseleave',()=>{ if(hoveredId===r.id) hoveredId=null; if(primary&&!isSel) primary.removeAttribute('filter'); });
       mapSvg.appendChild(hit);
 
 
@@ -2115,7 +2215,7 @@ function renderSvg(){
       const fs=Math.max(12,W*0.014*(r.fontSize??1));
       const isItalic=(r.fontStyle||'normal').includes('italic');
       const isBold=(r.fontStyle||'normal').includes('bold');
-      const col=r.explored?(isSel||isHov?r.color:'#c8b87a'):'#555';
+      const col=r.explored?(isSel?r.color:'#c8b87a'):'#555';
 
       // Transparent wide hit area (stroke on text)
       const hitT=makeSvgEl('text');
@@ -2131,8 +2231,8 @@ function renderSvg(){
       hitT.addEventListener('click',onShapeClick);
       hitT.addEventListener('mousedown',e=>{ if(e.button===2){e.stopPropagation();return;} onShapeMousedown(e,r.id); });
       hitT.addEventListener('contextmenu',e=>onShapeContextMenu(e,r.id));
-      hitT.addEventListener('mouseenter',()=>{ hoveredId=r.id; renderSvg(); });
-      hitT.addEventListener('mouseleave',()=>{ hoveredId=null; renderSvg(); });
+      hitT.addEventListener('mouseenter',()=>{ hoveredId=r.id; });
+      hitT.addEventListener('mouseleave',()=>{ if(hoveredId===r.id) hoveredId=null; });
       mapSvg.appendChild(hitT);
 
       const txt=makeSvgEl('text');
@@ -2669,6 +2769,19 @@ function repopulateEditPanel(){
   document.getElementById('ep-roadconnect-field').style.display=_isRoad?'block':'none';
   if(!_isRoad) document.getElementById('road-label-adjust').style.display='none';
   if(_isRoad) populateRoadFields(r);
+  // Custom icon (pins & polygons)
+  const _isPinForCustom=r.kind==='pin'||r.kind==='polygon';
+  document.getElementById('ep-custompin-field').style.display=_isPinForCustom?'block':'none';
+  if(_isPinForCustom){
+    const prev=document.getElementById('custompin-preview');
+    const emojiInp=document.getElementById('custompin-emoji');
+    const clearBtn=document.getElementById('btn-custompin-clear');
+    if(r.customIcon){ prev.innerHTML='<img src="'+r.customIcon+'" style="width:100%;height:100%;object-fit:contain">'; }
+    else if(r.customEmoji){ prev.innerHTML=''; prev.textContent=r.customEmoji; }
+    else { prev.innerHTML='<span style="font-size:11px;color:var(--text-dim)">type</span>'; }
+    emojiInp.value=r.customEmoji||'';
+    clearBtn.style.display=(r.customIcon||r.customEmoji)?'block':'none';
+  }
   // Label scale / icon / border / reset (pins & polygons)
   const _isPin=r.kind==='pin', _isPoly=r.kind==='polygon';
   const lsField=document.getElementById('ep-labelscale-field');
@@ -2725,21 +2838,16 @@ function renderRumoursList(r){
   list.innerHTML='';
   (r.rumours||[]).forEach((rum,i)=>{
     const card=document.createElement('div'); card.className='rumour-card';
-    const truthIcon=rum.isTrue===true?'🟢':rum.isTrue===false?'🔴':'⚪';
-    const titleAttr=rum.isTrue===true?'True':'false'===String(rum.isTrue)?'False':'Unknown';
     const row=document.createElement('div'); row.className='rumour-card-row';
-    const tb=document.createElement('button'); tb.className='truth-btn'; tb.title='Toggle truth ('+titleAttr+'): ⚪ unknown → 🟢 true → 🔴 false'; tb.textContent=truthIcon;
-    tb.onclick=()=>{
-      const cur=r.rumours[i].isTrue;
-      snapshot();
-      r.rumours[i].isTrue=cur===null?true:cur===true?false:null;
-      saveState(); renderRumoursList(r);
-    };
     const ta=document.createElement('textarea'); ta.className='text-input rumour-text'; ta.placeholder='What rumour do the players hear about this place?'; ta.value=rum.text||'';
     ta.oninput=e=>{ r.rumours[i].text=e.target.value; saveState(); };
     const del=document.createElement('button'); del.className='rumour-del'; del.title='Delete rumour'; del.textContent='✕';
     del.onclick=()=>{ snapshot(); r.rumours.splice(i,1); saveState(); renderRumoursList(r); };
-    row.appendChild(tb); row.appendChild(ta); row.appendChild(del);
+    const rv=document.createElement('button'); rv.className='truth-btn';
+    const setRv=()=>{ rv.textContent=r.rumours[i].revealed?'👁':'🚫'; rv.title=r.rumours[i].revealed?'Exported to players — click to make DM-only':'DM-only (not exported) — click to export to players'; rv.style.opacity=r.rumours[i].revealed?'1':'.45'; };
+    setRv();
+    rv.onclick=()=>{ snapshot(); r.rumours[i].revealed=!r.rumours[i].revealed; saveState(); setRv(); };
+    row.appendChild(ta); row.appendChild(rv); row.appendChild(del);
     card.appendChild(row);
     const dmNoteTA=document.createElement('textarea'); dmNoteTA.className='rumour-dm-note'; dmNoteTA.placeholder='DM note — is this true? Who planted it? (never exported)'; dmNoteTA.rows=1; dmNoteTA.value=rum.dmNote||'';
     dmNoteTA.oninput=e=>{ r.rumours[i].dmNote=e.target.value; autoResize(e.target); saveState(); };
@@ -2752,7 +2860,7 @@ function renderRumoursList(r){
 document.getElementById('btn-add-rumour').onclick=()=>{
   const r=state.regions.find(x=>x.id===selectedId); if(!r) return;
   snapshot();
-  r.rumours.push({id:uid(), text:'', isTrue:null, dmNote:''});
+  r.rumours.push({id:uid(), text:'', details:'', isTrue:null, dmNote:'', revealed:false});
   saveState(); renderRumoursList(r);
   // focus the new textarea
   const cards=document.querySelectorAll('#ep-rumours-list .rumour-text');
@@ -3102,6 +3210,32 @@ document.getElementById('btn-delete-region').onclick=()=>{
   selectRegion(null); saveState(); renderSvg(); renderSidebar();
 };
 
+// Custom pin
+document.getElementById('btn-custompin-img').onclick=()=>document.getElementById('custompin-file').click();
+document.getElementById('custompin-file').onchange=async function(){
+  const file=this.files[0]; if(!file) return; this.value='';
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    const compressed=await compressImage(e.target.result,256);
+    const r=state.regions.find(x=>x.id===selectedId); if(!r||(r.kind!=='pin'&&r.kind!=='polygon')) return;
+    snapshot(); r.customIcon=compressed; r.customEmoji=null; if(r.kind==='polygon') r.showIcon=true; saveState(); repopulateEditPanel(); renderSvg();
+  };
+  reader.readAsDataURL(file);
+};
+document.getElementById('custompin-emoji').oninput=function(){
+  const r=state.regions.find(x=>x.id===selectedId); if(!r||(r.kind!=='pin'&&r.kind!=='polygon')) return;
+  const v=(this.value||'').trim();
+  snapshot(); r.customEmoji=v||null; if(v){ r.customIcon=null; if(r.kind==='polygon') r.showIcon=true; } saveState(); renderSvg();
+  const prev=document.getElementById('custompin-preview');
+  if(r.customIcon){ prev.innerHTML='<img src="'+r.customIcon+'" style="width:100%;height:100%;object-fit:contain">'; }
+  else if(v){ prev.innerHTML=''; prev.textContent=v; }
+  else { prev.innerHTML='<span style="font-size:11px;color:var(--text-dim)">type</span>'; }
+  document.getElementById('btn-custompin-clear').style.display=(r.customIcon||v)?'block':'none';
+};
+document.getElementById('btn-custompin-clear').onclick=()=>{
+  const r=state.regions.find(x=>x.id===selectedId); if(!r||(r.kind!=='pin'&&r.kind!=='polygon')) return;
+  snapshot(); r.customIcon=null; r.customEmoji=null; saveState(); repopulateEditPanel(); renderSvg();
+};
 // Cover image
 document.getElementById('cover-preview').onclick=()=>document.getElementById('cover-file').click();
 document.getElementById('btn-cover-add').onclick=()=>document.getElementById('cover-file').click();
@@ -3502,17 +3636,16 @@ function fillLocOptions(sel,includeAll){
 function buildRumorRow(bucket,rum){
   const row=document.createElement('div'); row.className='rt-row'; row.dataset.rid=rum.id;
   const head=document.createElement('div'); head.className='rt-row-head';
-  const tb=document.createElement('button'); tb.className='truth-btn';
-  const setIcon=()=>{ tb.textContent=rum.isTrue===true?'🟢':rum.isTrue===false?'🔴':'⚪'; };
-  setIcon(); tb.title='Truth (DM only): ⚪ unknown → 🟢 true → 🔴 false';
-  tb.onclick=e=>{ e.stopPropagation(); snapshot(); rum.isTrue=rum.isTrue===null?true:rum.isTrue===true?false:null; setIcon(); saveState(); };
   const title=document.createElement('input'); title.className='rt-title'; title.value=rum.text||''; title.placeholder='Rumour…';
   title.oninput=e=>{ rum.text=e.target.value; saveState(); };
   title.onclick=e=>e.stopPropagation();
   const chev=document.createElement('button'); chev.className='rt-chev'; chev.textContent='▸';
   const del=document.createElement('button'); del.className='rumour-del'; del.textContent='✕'; del.title='Delete rumour';
   del.onclick=e=>{ e.stopPropagation(); snapshot(); const i=bucket.indexOf(rum); if(i>=0) bucket.splice(i,1); saveState(); renderRumorTracker(); };
-  head.append(tb,title,chev,del);
+  const rvBtn=document.createElement('button'); rvBtn.className='truth-btn';
+  const setRv=()=>{ rvBtn.textContent=rum.revealed?'👁':'🚫'; rvBtn.title=rum.revealed?'Exported to players — click to make DM-only':'DM-only (not exported) — click to export to players'; rvBtn.style.opacity=rum.revealed?'1':'.45'; };
+  setRv(); rvBtn.onclick=e=>{ e.stopPropagation(); snapshot(); rum.revealed=!rum.revealed; setRv(); saveState(); };
+  head.append(rvBtn,title,chev,del);
   const body=document.createElement('div'); body.className='rt-body';
   const dl=document.createElement('div'); dl.className='rt-sublabel'; dl.textContent='Details — shown to players under the rumour';
   const det=document.createElement('textarea'); det.className='rt-details'; det.value=rum.details||''; det.placeholder='Extra detail players can expand…';
@@ -3566,7 +3699,7 @@ document.getElementById('rumor-add-btn').onclick=()=>{
   const locId=document.getElementById('rumor-add-loc').value;
   const bucket=rumorBucket(locId); if(!bucket) return;
   snapshot();
-  const nr={id:'rm'+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-3),text:'',details:'',isTrue:null,dmNote:''};
+  const nr={id:'rm'+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-3),text:'',details:'',isTrue:null,dmNote:'',revealed:false};
   bucket.push(nr);
   const fs=document.getElementById('rumor-filter');
   if(fs.value!=='__all'&&fs.value!==locId) fs.value=locId;
@@ -3678,7 +3811,7 @@ function generatePlayerExport(){
     publicLore:r.publicLore, firstGlimpse:r.firstGlimpse||'', explored:r.explored, fillOpacity:r.fillOpacity??1, pinSize:r.pinSize??1, roadSize:r.roadSize??1, roadStyle:r.roadStyle||'road', smooth:!!r.smooth, showRouteLabel:!!r.showRouteLabel, labelOffset:r.labelOffset??50, labelDy:r.labelDy??0, labelStraight:r.labelStraight??0, labelFlip:!!r.labelFlip, fromRef:r.fromRef||null, toRef:r.toRef||null,
     fontSize:r.fontSize??1, fontStyle:r.fontStyle||'normal',
     labelScale:r.labelScale??1, labelDx:r.labelDx??0, labelDy:r.labelDy??0, showIcon:!!r.showIcon, hideBorder:!!r.hideBorder, iconOpacity:r.iconOpacity??1, iconScale:r.iconScale??1, labelStyle:r.labelStyle||'normal',
-    coverImage:r.coverImage||null,
+    coverImage:r.coverImage||null, customIcon:r.customIcon||null, customEmoji:r.customEmoji||null,
     points:r.points, px:r.px, py:r.py,
     npcs:(r.npcs||[]).map(n=>({id:n.id,name:n.name,description:n.description,image:n.image||null})),
     buildings:(r.buildings||[]).map(b=>({id:b.id,name:b.name,description:b.description,image:b.image||null})),
@@ -3688,10 +3821,10 @@ function generatePlayerExport(){
     rulerRef:r.rulerRef||null, capitalRef:r.capitalRef||null,
     isFaction:r.isFaction||false, factionLeader:r.factionLeader||'', factionGoal:r.factionGoal||'',
     factionRelations:(r.factionRelations||[]),
-    rumours:(r.rumours||[]).filter(rum=>rum.text&&rum.text.trim()).map(rum=>({id:rum.id,text:rum.text,details:rum.details||''})),
+    rumours:(r.rumours||[]).filter(rum=>rum.text&&rum.text.trim()&&rum.revealed).map(rum=>({id:rum.id,text:rum.text,details:rum.details||''})),
   }));
 
-  const exportWorldRumours=(state.worldRumours||[]).filter(rum=>rum.text&&rum.text.trim()).map(rum=>({id:rum.id,text:rum.text,details:rum.details||''}));
+  const exportWorldRumours=(state.worldRumours||[]).filter(rum=>rum.text&&rum.text.trim()&&rum.revealed).map(rum=>({id:rum.id,text:rum.text,details:rum.details||''}));
   const data=JSON.stringify({imgW:state.imgW,imgH:state.imgH,imageB64:state.imageB64,worldName:state.worldName||'',worldIntro:state.worldIntro||'',regions:exportRegions,worldRumours:exportWorldRumours,partyMarker:state.partyMarker||{active:false}});
   const iconsJson=JSON.stringify(PIN_ICONS);
 
@@ -3852,19 +3985,29 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .pr-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .pr-gname{font-size:15px;color:var(--accent);font-variant:small-caps;letter-spacing:.04em}
 .pr-row{border:1px solid #3a2a0a;border-left-width:3px;border-radius:5px;margin-bottom:8px;background:rgba(255,255,255,.025);overflow:hidden}
-.pr-row.s-following{border-left-color:#5b9ec9}
-.pr-row.s-confirmed{border-left-color:#5fae6a}
-.pr-row.s-debunked{border-left-color:#cc6666}
+.pr-row.s-known{border-left-color:#9a7b3a}
+.pr-row.s-tracking{border-left-color:#5b9ec9}
+.pr-row.s-finished{border-left-color:#5fae6a}
 .pr-head{display:flex;align-items:center;gap:8px;padding:9px 11px;flex-wrap:wrap}
 .pr-chev{color:#9a855a;font-size:11px;width:12px;flex-shrink:0}
 .pr-text{flex:1;color:#d8c49a;font-size:13px;font-style:italic;min-width:150px;line-height:1.45}
-.pr-row.s-debunked .pr-text{text-decoration:line-through;opacity:.65}
+.pr-row.s-finished .pr-text{text-decoration:line-through;opacity:.6}
+.pr-noteflag{color:#c9a84c;font-size:12px;flex-shrink:0}
 .pr-status{display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap}
 .pr-sbtn{background:rgba(255,255,255,.04);border:1px solid #4a3a1a;border-radius:11px;color:#9a855a;font-family:inherit;font-size:10.5px;padding:3px 9px;cursor:pointer;letter-spacing:.03em}
 .pr-sbtn:hover{border-color:var(--parch-dk);color:#c8b48a}
 .pr-sbtn.active{background:rgba(201,168,76,.18);border-color:var(--accent);color:var(--accent)}
-.pr-details{padding:0 12px 11px 30px;font-size:12px;color:#a89060;line-height:1.6;white-space:pre-wrap;display:none}
-.pr-row.open .pr-details{display:block}
+.pr-expand{padding:0 12px 11px 30px;display:none}
+.pr-row.open .pr-expand{display:block}
+.pr-details{font-size:12px;color:#a89060;line-height:1.6;white-space:pre-wrap;margin-bottom:9px}
+.pr-notes-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#9a855a;margin-bottom:4px}
+.pr-notes{width:100%;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid #4a3a1a;border-radius:4px;color:#d8c49a;font-family:inherit;font-size:12px;line-height:1.5;padding:6px 8px;resize:none;min-height:38px;overflow:hidden}
+.pr-notes:focus{outline:none;border-color:var(--accent)}
+.pr-iobtn{background:rgba(255,255,255,.05);border:1px solid #4a3a1a;border-radius:4px;color:var(--accent);padding:5px 8px;font-family:inherit;font-size:11.5px;cursor:pointer;white-space:nowrap}
+.pr-iobtn:hover{border-color:var(--accent)}
+.loc-notes-section{margin-top:14px;padding-top:10px;border-top:1px solid #3a2a0a}
+.loc-notes{width:100%;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid #4a3a1a;border-radius:4px;color:#d8c49a;font-family:inherit;font-size:12px;line-height:1.5;padding:6px 8px;resize:none;min-height:42px;overflow:hidden}
+.loc-notes:focus{outline:none;border-color:var(--accent)}
 .pr-empty{margin:auto;color:#6a5a3a;font-style:italic;font-size:14px;text-align:center;padding:40px;line-height:1.6}
 </style>
 </head>
@@ -3876,6 +4019,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <button class="t-btn" id="journal-toggle">&#9998; Journal</button>
   <button class="t-btn" id="lb-toggle">&#128214; Compendium</button>
   <button class="t-btn" id="rumor-toggle">&#128172; Rumors</button>
+  <button class="t-btn" id="notes-save" title="Download ALL your notes (journal, rumour tracking, location notes) as one backup file">&#10515; Save Notes</button>
+  <button class="t-btn" id="notes-load" title="Load a notes backup — e.g. after the DM sends an updated map">&#10514; Load Notes</button>
+  <input type="file" id="notes-file" accept="application/json,.json" style="display:none">
   <button class="t-btn" id="terr-toggle" style="display:none">&#11041; Kingdoms: Default</button>
   <div id="legend-panel"><div id="legend-title">Map Key</div><div id="legend-body"></div></div>
 <div id="world-overlay"><div id="world-card"><div id="world-card-name"></div><div id="world-card-rule"></div><div id="world-card-intro"></div><div id="world-card-stats"></div><button class="t-btn" id="world-enter">&#9650; Enter the Map</button></div></div>
@@ -3883,6 +4029,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
   <div id="pr-bar">
     <span id="pr-titletxt">&#128172; Rumors</span>
     <select id="pr-loc-filter"></select>
+    <button id="pr-save" class="pr-iobtn" title="Download your notes & statuses as a backup file">&#10515; Save</button>
+    <button id="pr-load" class="pr-iobtn" title="Load a notes backup file (e.g. after the DM sends a new map)">&#10514; Load</button>
+    <input type="file" id="pr-file" accept="application/json,.json" style="display:none">
     <button id="pr-x" title="Close">&#10005;</button>
   </div>
   <div id="pr-body"></div>
@@ -4188,11 +4337,25 @@ function renderMap(){
         let plabelY=cy;
         if(r.showIcon){
           const isz=Math.max(14,Math.min(34,W*0.022))*(r.iconScale??1);
-          const ig=svgEl('g');
-          ig.setAttribute('transform','translate('+(cx+pox-isz/2)+','+(cy+poy-isz*0.5)+') scale('+(isz/20)+')');
-          ig.setAttribute('fill',r.color);ig.setAttribute('opacity',(r.iconOpacity??1)<0.05?0.05:(r.iconOpacity??1));ig.setAttribute('pointer-events','none');
-          ig.innerHTML=PIN_ICONS[r.tag]||PIN_ICONS.Other;
-          mapSvg.appendChild(ig);
+          const _op=(r.iconOpacity??1)<0.05?0.05:(r.iconOpacity??1);
+          if(r.customIcon){
+            const im=svgEl('image');
+            im.setAttributeNS('http://www.w3.org/1999/xlink','href',r.customIcon);im.setAttribute('href',r.customIcon);
+            im.setAttribute('x',cx+pox-isz/2);im.setAttribute('y',cy+poy-isz*0.5);im.setAttribute('width',isz);im.setAttribute('height',isz);
+            im.setAttribute('preserveAspectRatio','xMidYMid meet');im.setAttribute('opacity',_op);im.setAttribute('pointer-events','none');
+            mapSvg.appendChild(im);
+          } else if(r.customEmoji){
+            const et=svgEl('text');
+            et.setAttribute('x',cx+pox);et.setAttribute('y',cy+poy);et.setAttribute('text-anchor','middle');et.setAttribute('dominant-baseline','central');
+            et.setAttribute('font-size',isz);et.setAttribute('opacity',_op);et.setAttribute('pointer-events','none');et.textContent=r.customEmoji;
+            mapSvg.appendChild(et);
+          } else {
+            const ig=svgEl('g');
+            ig.setAttribute('transform','translate('+(cx+pox-isz/2)+','+(cy+poy-isz*0.5)+') scale('+(isz/20)+')');
+            ig.setAttribute('fill',r.color);ig.setAttribute('opacity',_op);ig.setAttribute('pointer-events','none');
+            ig.innerHTML=PIN_ICONS[r.tag]||PIN_ICONS.Other;
+            mapSvg.appendChild(ig);
+          }
           plabelY=cy+isz*0.55;
         }
         appendPlayerLabel(cx,plabelY,r,W);
@@ -4213,11 +4376,30 @@ function renderMap(){
       ring.addEventListener('click',e=>{e.stopPropagation();showPopup(r,e.clientX,e.clientY);});
       mapSvg.appendChild(ring);
       if(r.explored){
-        const ig=svgEl('g'),is=pis*0.72;
-        ig.setAttribute('transform','translate('+(px-is/2)+','+(py-is/2)+') scale('+(is/20)+')');
-        ig.setAttribute('fill',col);ig.setAttribute('opacity',(r.iconOpacity??1)<0.05?0.05:(r.iconOpacity??1));ig.setAttribute('pointer-events','none');
-        ig.innerHTML=PIN_ICONS[r.tag]||PIN_ICONS.Other;
-        mapSvg.appendChild(ig);
+        const _op=(r.iconOpacity??1)<0.05?0.05:(r.iconOpacity??1);
+        if(r.customIcon){
+          const im=svgEl('image'),is=pis*1.0;
+          im.setAttributeNS('http://www.w3.org/1999/xlink','href',r.customIcon);
+          im.setAttribute('href',r.customIcon);
+          im.setAttribute('x',px-is/2);im.setAttribute('y',py-is/2);
+          im.setAttribute('width',is);im.setAttribute('height',is);
+          im.setAttribute('preserveAspectRatio','xMidYMid meet');
+          im.setAttribute('opacity',_op);im.setAttribute('pointer-events','none');
+          mapSvg.appendChild(im);
+        } else if(r.customEmoji){
+          const et=svgEl('text');
+          et.setAttribute('x',px);et.setAttribute('y',py);
+          et.setAttribute('text-anchor','middle');et.setAttribute('dominant-baseline','central');
+          et.setAttribute('font-size',pis*0.95);et.setAttribute('opacity',_op);et.setAttribute('pointer-events','none');
+          et.textContent=r.customEmoji;
+          mapSvg.appendChild(et);
+        } else {
+          const ig=svgEl('g'),is=pis*0.72;
+          ig.setAttribute('transform','translate('+(px-is/2)+','+(py-is/2)+') scale('+(is/20)+')');
+          ig.setAttribute('fill',col);ig.setAttribute('opacity',_op);ig.setAttribute('pointer-events','none');
+          ig.innerHTML=PIN_ICONS[r.tag]||PIN_ICONS.Other;
+          mapSvg.appendChild(ig);
+        }
         appendPlayerLabel(px,py+pis*0.8,r,W);
       }
     }
@@ -4480,7 +4662,18 @@ function showPopup(r,cx,cy){
           r.rumours.forEach(rum=>{ infoHtml+='<li>'+escH(rum.text)+'</li>'; });
           infoHtml+='</ul></div>';
         }
+        if(r.id && r.kind!=='party'){
+          infoHtml+='<div class="loc-notes-section"><div class="ki-label" style="margin-bottom:6px">✎ Your notes</div><textarea class="loc-notes" placeholder="Private notes about this place — saved only in your browser."></textarea></div>';
+        }
         pane.innerHTML=infoHtml;
+        (function(){ const ln=pane.querySelector('.loc-notes'); if(!ln||!r.id) return;
+          const lk='dndmap_loc_notes:'+worldKey;
+          try{ const m=JSON.parse(localStorage.getItem(lk)||'{}')||{}; ln.value=m[r.id]||''; }catch(_){}
+          const grow=()=>{ ln.style.height='auto'; ln.style.height=ln.scrollHeight+'px'; }; setTimeout(grow,0);
+          ln.addEventListener('click',e=>e.stopPropagation());
+          ln.addEventListener('pointerdown',e=>e.stopPropagation());
+          ln.addEventListener('input',()=>{ try{ let m=JSON.parse(localStorage.getItem(lk)||'{}')||{}; if(ln.value.trim()) m[r.id]=ln.value; else delete m[r.id]; localStorage.setItem(lk,JSON.stringify(m)); }catch(_){} grow(); });
+        })();
         pane.querySelectorAll('[data-party-resize] [data-psz]').forEach(b=>{
           b.addEventListener('click',ev=>{ ev.stopPropagation(); if(window.__partyResize) window.__partyResize(parseFloat(b.dataset.psz)); });
         });
@@ -4640,6 +4833,40 @@ document.getElementById('journal-toggle').onclick=()=>document.getElementById('j
   ov.addEventListener('click',e=>{ if(e.target===ov) ov.classList.remove('open'); });
   searchEl.addEventListener('input',()=>renderList(searchEl.value.toLowerCase()));
 })();
+function collectPlayerData(){
+  const w=worldKey; const g=k=>{ try{return localStorage.getItem(k);}catch(_){return null;} }; const pj=v=>{ try{return JSON.parse(v||'{}')||{};}catch(_){return {};} };
+  return {type:'dndmap-notes', worldName:(MAP_DATA.worldName||''), savedAt:new Date().toISOString(),
+    journal:g('dndmap_journal:'+w)||'', statusMap:pj(g('dndmap_rumor_status:'+w)), notesMap:pj(g('dndmap_rumor_notes:'+w)), locNotes:pj(g('dndmap_loc_notes:'+w))};
+}
+function downloadPlayerData(){
+  const data=collectPlayerData();
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download='mynotes-'+((worldKey||'world').replace(/[^a-z0-9]+/gi,'-').toLowerCase().replace(/^-+|-+$/g,'')||'world')+'.json';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+function importPlayerData(d){
+  if(!d||(d.type&&d.type!=='dndmap-notes')) return false;
+  if(!d.statusMap&&!d.notesMap&&!d.locNotes&&typeof d.journal!=='string') return false;
+  const w=worldKey;
+  const merge=(k,obj)=>{ if(obj&&typeof obj==='object'){ let cur={}; try{cur=JSON.parse(localStorage.getItem(k)||'{}')||{};}catch(_){} Object.assign(cur,obj); try{localStorage.setItem(k,JSON.stringify(cur));}catch(_){} } };
+  merge('dndmap_rumor_status:'+w,d.statusMap);
+  merge('dndmap_rumor_notes:'+w,d.notesMap);
+  merge('dndmap_loc_notes:'+w,d.locNotes);
+  if(typeof d.journal==='string'&&d.journal.trim()){ try{ const ex=localStorage.getItem('dndmap_journal:'+w)||''; const merged=(ex&&ex.trim()&&ex.trim()!==d.journal.trim())?(ex+String.fromCharCode(10,10)+'---'+String.fromCharCode(10,10)+d.journal):d.journal; localStorage.setItem('dndmap_journal:'+w,merged); }catch(_){} }
+  return true;
+}
+(function initNotesIO(){
+  const sv=document.getElementById('notes-save'), ld=document.getElementById('notes-load'), fi=document.getElementById('notes-file');
+  if(sv) sv.onclick=downloadPlayerData;
+  if(ld) ld.onclick=()=>fi.click();
+  if(fi) fi.onchange=function(){ const f=this.files[0]; if(!f) return; this.value='';
+    const rd=new FileReader();
+    rd.onload=e=>{ let d=null; try{d=JSON.parse(e.target.result);}catch(_){}
+      if(!importPlayerData(d)){ alert('That file is not a valid notes backup.'); return; }
+      alert('Notes loaded'+(d.worldName?(' for \u201c'+d.worldName+'\u201d'):'')+'. The page will refresh to show them.'); location.reload(); };
+    rd.readAsText(f); };
+})();
 (function initJournal(){
   const key='dndmap_journal:'+((MAP_DATA.worldName||'').trim()||'_');
   const ta=document.getElementById('journal-text');
@@ -4654,6 +4881,11 @@ document.getElementById('journal-toggle').onclick=()=>document.getElementById('j
   let statusMap={};
   try{ statusMap=JSON.parse(localStorage.getItem(statusKey)||'{}')||{}; }catch(e){ statusMap={}; }
   const saveStatus=()=>{ try{ localStorage.setItem(statusKey,JSON.stringify(statusMap)); }catch(e){} };
+  const notesKey='dndmap_rumor_notes:'+((MAP_DATA.worldName||'').trim()||'_');
+  let notesMap={};
+  try{ notesMap=JSON.parse(localStorage.getItem(notesKey)||'{}')||{}; }catch(e){ notesMap={}; }
+  const saveNotes=()=>{ try{ localStorage.setItem(notesKey,JSON.stringify(notesMap)); }catch(e){} };
+  function autoGrow(t){ t.style.height='auto'; t.style.height=(t.scrollHeight)+'px'; }
   function groups(){
     const out=[];
     const wr=(MAP_DATA.worldRumours||[]).filter(r=>r.text&&r.text.trim());
@@ -4668,24 +4900,30 @@ document.getElementById('journal-toggle').onclick=()=>document.getElementById('j
   function rowEl(rum){
     const row=document.createElement('div'); row.className='pr-row';
     const status=statusMap[rum.id]||''; if(status) row.classList.add('s-'+status);
-    const head=document.createElement('div'); head.className='pr-head';
+    const head=document.createElement('div'); head.className='pr-head'; head.style.cursor='pointer';
     const hasDet=!!(rum.details&&rum.details.trim());
-    const chev=document.createElement('span'); chev.className='pr-chev'; chev.textContent=hasDet?'▸':'';
+    const chev=document.createElement('span'); chev.className='pr-chev'; chev.textContent='▸';
     const txt=document.createElement('span'); txt.className='pr-text'; txt.textContent=rum.text;
+    const noteFlag=document.createElement('span'); noteFlag.className='pr-noteflag';
+    const setFlag=()=>{ noteFlag.textContent=(notesMap[rum.id]&&notesMap[rum.id].trim())?'✎':''; };
+    setFlag();
     const stWrap=document.createElement('div'); stWrap.className='pr-status';
-    [['following','Following'],['confirmed','Confirmed'],['debunked','Debunked']].forEach(([s,label])=>{
-      const b=document.createElement('button'); b.className='pr-sbtn'+(status===s?' active':''); b.textContent=label;
-      b.onclick=e=>{ e.stopPropagation(); const cur=statusMap[rum.id]||''; if(cur===s) delete statusMap[rum.id]; else statusMap[rum.id]=s; saveStatus(); render(); };
+    [['known','Known'],['tracking','Tracking'],['finished','Finished']].forEach(([sName,label])=>{
+      const b=document.createElement('button'); b.className='pr-sbtn'+(status===sName?' active':''); b.textContent=label;
+      b.onclick=e=>{ e.stopPropagation(); const cur=statusMap[rum.id]||''; if(cur===sName) delete statusMap[rum.id]; else statusMap[rum.id]=sName; saveStatus(); render(); };
       stWrap.appendChild(b);
     });
-    head.append(chev,txt,stWrap);
+    head.append(chev,txt,noteFlag,stWrap);
     row.appendChild(head);
-    if(hasDet){
-      const det=document.createElement('div'); det.className='pr-details'; det.textContent=rum.details;
-      row.appendChild(det);
-      head.style.cursor='pointer';
-      head.onclick=()=>{ const open=row.classList.toggle('open'); chev.textContent=open?'▾':'▸'; };
-    }
+    const exp=document.createElement('div'); exp.className='pr-expand';
+    if(hasDet){ const det=document.createElement('div'); det.className='pr-details'; det.textContent=rum.details; exp.appendChild(det); }
+    const nl=document.createElement('div'); nl.className='pr-notes-label'; nl.textContent='Your notes';
+    const nt=document.createElement('textarea'); nt.className='pr-notes'; nt.placeholder='What your party learned, suspicions, leads…'; nt.value=notesMap[rum.id]||'';
+    nt.onclick=e=>e.stopPropagation();
+    nt.oninput=e=>{ const v=e.target.value; if(v.trim()) notesMap[rum.id]=v; else delete notesMap[rum.id]; saveNotes(); setFlag(); autoGrow(nt); };
+    exp.append(nl,nt);
+    row.appendChild(exp);
+    head.onclick=()=>{ const open=row.classList.toggle('open'); chev.textContent=open?'▾':'▸'; if(open) autoGrow(nt); };
     return row;
   }
   function render(){
@@ -4714,6 +4952,16 @@ document.getElementById('journal-toggle').onclick=()=>document.getElementById('j
   document.getElementById('pr-x').onclick=()=>ov.classList.remove('open');
   ov.addEventListener('click',e=>{ if(e.target===ov) ov.classList.remove('open'); });
   locFilter.onchange=render;
+  document.getElementById('pr-save').onclick=downloadPlayerData;
+  document.getElementById('pr-load').onclick=()=>document.getElementById('pr-file').click();
+  document.getElementById('pr-file').onchange=function(){
+    const f=this.files[0]; if(!f) return; this.value='';
+    const rd=new FileReader();
+    rd.onload=e=>{ let d=null; try{ d=JSON.parse(e.target.result); }catch(_){}
+      if(!importPlayerData(d)){ alert('That file is not a valid notes backup.'); return; }
+      alert('Notes loaded'+(d.worldName?(' for “'+d.worldName+'”'):'')+'. The page will refresh to show them.'); location.reload(); };
+    rd.readAsText(f);
+  };
 })();
 (function initTerrToggle(){
   const btn=document.getElementById('terr-toggle');

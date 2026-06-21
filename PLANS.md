@@ -4,6 +4,54 @@
 
 ---
 
+## ✅ Pin/Polygon refinements (DONE — latest session)
+Four features, all editor + export, data fields added to `newRegion`/`migrateRegions`/export passthrough:
+- **labelScale** (50–400%): "Label Text Size" slider — pins & polygons. Multiplies name-label font in `appendLabel`/`appendPlayerLabel`.
+- **showIcon** (bool): "Show type icon inside" toggle — polygons only. Renders the tag's PIN_ICON above the centroid label in editor + export.
+- **hideBorder** (bool): "Hide pin border" toggle — pins only. Ring becomes invisible (transparent fill, no stroke) but keeps `pointer-events:all` hit area + hover feedback.
+- **labelDx/labelDy** (normalized): drag a selected pin/polygon's name label to reposition; "↺ Reset label position" button appears when offset ≠ 0. Drag handled via global `labelDrag` state in mousemove/mouseup/Esc.
+Note: file is CRLF — multi-line str_replace must use EOL-aware run_script (E() helper). Export JSON stringifies fields as `"labelScale":` etc.
+
+## ✅ Rumor system overhaul (DONE — latest session)
+Rumor model is now `{id, text (headline), details (expandable, player-facing), isTrue (DM), dmNote (DM)}`. New `state.worldRumours` array for rumours not tied to any location.
+- **A (data):** `migrateRegions` adds `state.worldRumours`, normalizes every rumour (id + details). Export passthrough now includes `id`+`details` per region rumour and a top-level `worldRumours` array.
+- **B (editor 💬 Rumor Tracker):** toolbar button (next to 🌍) → `#rumor-modal`. Grouped by location (World group first), "Add to" location dropdown (incl. World) + Add button, "Show" location filter. Each row: truth toggle + headline input + expand chevron → Details + DM-note textareas. `renderRumorTracker()`, `buildRumorRow()`, `rumorBucket()`, `rumorLocations()`, `fillLocOptions()`. Closing re-renders the side-panel rumour list.
+- **C (player export 💬 Rumors):** `#pr-overlay` toolbar button. Grouped by location (only EXPLORED locations + World). Each row: headline + Following/Confirmed/Debunked buttons (saved to `localStorage` key `dndmap_rumor_status:<world>`, per-player) + expandable details. Location filter dropdown. Truth + dmNote never exported. `initRumorTracker()` IIFE.
+Note: the per-location edit-panel rumour card still only edits text+dmNote (not details) — details live in the tracker. Could add details there later for parity.
+
+## ✅ Icon Size decoupled from Label Text Size (DONE — latest session)
+New field `iconScale` (default 1; in newRegion/migrate/export passthrough).
+- **Polygons with "Show type icon inside":** the embedded icon previously scaled with `labelScale` (same slider as the kingdom's name text). Now it uses `iconScale` via a new **"Icon Size"** slider (`ep-iconscale`, 30–500%), shown only when showIcon is on. Label Text Size now affects only the text.
+- **Pins:** already independent (pinSize=icon+ring marker, labelScale=text). Renamed the pin's "Pin Size" slider label → **"Icon Size"** for vocabulary consistency. No functional change for pins.
+Both editor render (~line 1755) and export render (~line 3873) switched from `r.labelScale` → `r.iconScale` for the polygon icon.
+
+## ✅ Polygon hide-border + Kingdom Name Style (DONE — latest session)
+- **Hide border for polygons:** the pin `hideBorder` toggle now also applies to polygons (label "Hide pin border" → "Hide border"). Polygon `<polygon>` stroke set to 'none' when `hideBorder && dispMode!=='border'` (and, in editor, not selected/hovered so it stays editable). Both render paths.
+- **Name Style (`labelStyle`: 'normal' | 'caps' | 'spread'):** new select shown for polygons. `caps` = UPPERCASE + ~0.22em tracking (engraved look). `spread` = UPPERCASE with letter-spacing auto-computed to span ~60% of the polygon's bbox width (classic kingdom-name-across-territory look). Applied in both `appendLabel` (editor) and `appendPlayerLabel` (export); x shifted by −lspacing/2 to keep centered. Field added to newRegion/migrate/export passthrough.
+
+## ✅ Player-export interactions: party drag, kingdom display toggle, rename (DONE — latest session)
+- **Movable Party pin (export only):** the Party Location marker's hit circle now supports pointer drag (the ONLY movable pin). `pointerdown/move/up` on `phit`; updates `MAP_DATA.partyMarker.px/py`, repositions ring+glyph+hit live; a <5px move counts as a click → opens its popup. Dragged position saved to `localStorage` key `dndmap_party:<world>` and restored on load (one-time block near top of export script). Cursor grab/grabbing.
+- **Player kingdom display toggle (export only):** new toolbar button `#terr-toggle` ("⬡ Kingdoms: Default/Filled/Outline/Hidden"). Cycles a global `terrOverride` that overrides EVERY territory/faction polygon's `dispMode` in `renderMap()` (`if((isTerritory||isFaction)&&terrOverride) dispMode=terrOverride`). Only affects kingdoms/territories+factions, never other regions. Saved to `localStorage` `dndmap_terr_disp:<world>`. Button hidden if the map has no territories/factions. `initTerrToggle()` IIFE.
+- **Rename:** "Settlements within these Borders" → **"Locations within these Borders"** (5 places: 2 editor panel labels, 1 export popup, 2 export Compendium) since ruins/wilderness/etc. also appear there.
+
+## ✅ Road Rework (DONE — latest session)
+Roads went from a single dotted style to a full typed/curved/labelled system. All editor + export, with new data fields in `newRegion`/`migrateRegions`/export passthrough. Shared helpers (`ROAD_STYLES`, `roadStyleOf`, `rcatmull`, `roadPathD`, `wallTicks`, `paintRoad`) are inserted into BOTH the editor scope (before `closeRoad`) and the export scope (before `renderMap`) as identical text.
+
+- **Road types (`roadStyle`):** six presets in `ROAD_STYLES` — `trail` (thin faint dotted), `road` (default dotted), `kings` (cased double-stroke warm stone), `river` (smooth wavy blue, renders under terrain), `sea` (dashed cool), `wall` (solid dark + crenellation ticks via `wallTicks`). Each has `color`/`wf` (width factor)/`kind`. Picking a style seeds `color` (still per-road overridable) and forces `smooth` for water styles. Edit panel: "Road Type" `<select>` (`#ep-roadstyle`).
+- **Smooth/curved (`smooth`):** `roadPathD(points, smooth)` returns a Catmull-Rom cubic-bezier path (`rcatmull`) when smooth, else straight `M…L`. Per-road toggle `#road-smooth-toggle`; auto-on for river/sea.
+- **Path-following name label (`showRouteLabel`, off by default):** `<textPath>` along a `<path id="rdp_ID">`, italic Georgia with stroke halo, color = road color. Toggle `#road-label-toggle`.
+  - **Label adjustment (added same session):** `labelOffset` (startOffset %), `labelDy` (perpendicular offset in font-size units), `labelStraight` (0–100% lerp of label path toward the straight endpoint-to-endpoint line, to tame jagged curvature), `labelFlip` (reverse path direction for upside-down text). Editor-only: the label text is draggable on the map (`startRoadLabelDrag` projects cursor onto the path via `getPointAtLength` to set offset + perpendicular dy). Sliders/toggle live in `#road-label-adjust` (shown only when label is on).
+- **Endpoint snapping (`fromRef`/`toRef`):** `snapRoadEnds(r)` runs after drawing/continuing — snaps each end to a nearby pin (within ~0.025 norm) or detects an enclosing polygon, storing the location id. Live gold snap-ring preview while drawing. Edit panel "Connects" two `<select>`s let you set/override endpoints manually.
+- **Player route info (export):** road popups show a "Type" + "Connects A ↔ B / Leads to" `kingdom-info` block. Legend now emits **one row per road style present** (style-specific SVG glyph). Compendium has a **Routes** section: `routes()` lists named roads; `routeReadHtml(r)` renders type, connects, lore, rumours. `show(id)` short-circuits to `routeReadHtml` for road kinds.
+- **Z-order:** both editor (`renderSvg`) and export (`renderMap`) sort the "others" array by a `_zr` rank — rivers (-1) under everything, other roads (1) above fills, pins (2), labels (3) on top — with original index as tiebreaker for stable order.
+
+Vertex-edit parity (chunk 4 of the original plan) was deprioritized — roads still use Continue-from-End + whole-road move. Measured distances were intentionally skipped (no map-scale setting; maintainer chose to defer).
+
+## ✅ Player party-marker fixes (DONE — latest session)
+- **Export honored `partyMarker.size`:** the export render had hardcoded `pms=iconSize*1.15`, ignoring the DM's size — so a marker set small in the editor exported at full size. Now `pms=iconSize*1.15*partyScale`.
+- **Player-resizable party pin (export only, that one pin):** `partyScale` starts from `partyMarker.size`, then any player override in `localStorage['dndmap_partysize:'+worldKey]`. Resize via scroll-wheel over the marker OR the −/+ "Marker size" buttons injected into the party popup (`window.__partyResize`). The marker block was refactored to a `drawParty()` that recomputes ring/icon/hit + the pulse keyframes; persists on change. Clamped 0.3–4×.
+- **One popup per unique entity (export):** `showPopup` now stamps `dataset.popupKey` (`r.id`, or `__party__`, or name|tag fallback) and, if a popup with that key is already open, just brings it to front instead of cloning — fixes infinite duplicate popups on repeated clicks. Different entities still open side-by-side.
+
 ## Mission Statement
 
 This is a **lore and immersion tool** for tabletop RPG dungeon masters. The primary audience is the **players** — the DM uses `editor.html` to annotate a world map with regions, lore, NPCs, and buildings, then exports a polished self-contained `world-map.html` that players can open in any browser to read about the world.
@@ -385,6 +433,48 @@ Five colored flags per region: *Quest Active* (gold), *Visited* (green), *Cleare
 
 These are ordered by impact-to-effort ratio. The core question for each: *does this help players engage with the world?*
 
+### ✅ APPROVED ROADMAP (build in this order — agreed with maintainer, June 2026)
+
+> These are confirmed and sequenced. Everything below this block under High/Medium/Lower priority is still-unscheduled backlog. **Multi-map linking is the FINAL feature** — do it last, on its own, after all of the below ship and feel solid.
+
+**A. New pin types (✅ DONE — Temple, Shrine, Port, Harbor, Camp, Cave, Mine added to TYPES/TYPE_COLORS/PIN_ICONS)**
+Add seven types to the existing palette. Same mechanism as the Bastion pin already added (`TYPES`, `TYPE_COLORS`, `PIN_ICONS` — auto-flows to palette, type-filter chips, `ep-tag` dropdown, and the player export which `JSON.stringify`s `PIN_ICONS`).
+- New tags: **Temple**, **Shrine**, **Port**, **Harbor**, **Camp**, **Cave**, **Mine**.
+- For each: add to `TYPES` array (sensible grouping), add a distinct color to `TYPE_COLORS`, add a 20×20 `PIN_ICONS` entry (simple geometric SVG, fill inherits type color — same convention as existing icons; keep them readable at small size, no over-detailed paths).
+- Remember to keep the palette legible — these seven are the agreed ceiling for hardcoded types; anything beyond waits for **custom pin icon upload** (see Medium priority #5).
+
+**B. Map Legend / Key (player export) — ✅ DONE** *(highest "help players read the world" win)*
+Shipped: `#legend-toggle` button in the export toolbar opens `#legend-panel`; `buildLegend()` scans EXPLORED regions only, lists each used pin type (icon in its color) + Road / Kingdom border / Faction swatches. Unused types omitted; button hides itself if nothing to show.
+A collapsible legend in `world-map.html` mapping each color/icon → its type label, plus territory/faction swatches.
+- Only list types that actually appear on THIS map (scan exported regions; don't show unused types).
+- Lives in the export only (DM doesn't need it). Suggested placement: a toggle button in the export `#toolbar` (next to "Locations") opening a small panel, OR a corner card. Parchment styling, same palette as the rest of the export.
+- Pure presentation — reads existing data, stores nothing.
+
+**C. World Overview intro card (player export) — ✅ DONE** — sets the stage on first open
+A welcome/gazetteer card shown when a player first opens the export (before they touch the map).
+- New DM-authored fields on the top-level state: `state.worldName: string`, `state.worldIntro: string` (markdown, public). Author them in the editor (small "World" section — toolbar button or a panel; NOT per-region).
+- Export: on load, if `worldIntro` is set, show a centered parchment card with the world name (small-caps gold) + rendered intro markdown + a light auto-stat line (e.g. "4 kingdoms · 23 explored locations"). Dismiss to reveal the map; remember dismissal in the player's `localStorage` so it doesn't nag every visit (key namespaced per export, e.g. by world name).
+- Add `worldName`/`worldIntro` defaults in `migrateRegions()`-equivalent state migration so old saves don't break.
+
+**D. "First Glimpse" read-aloud text (DM authoring → export) — ✅ DONE** — boxed read-aloud immersion
+A dedicated per-region field for the classic boxed read-aloud a DM reads when players arrive.
+- New field: `r.firstGlimpse: string` (markdown, public — exported only when `r.explored`). Add to `newRegion()` and the state migration with default `''`.
+- Editor: a field in the Info tab (above or below Public Lore), clearly labelled "First Glimpse / Read-Aloud". Markdown-enabled like other lore fields (`wireMdField`).
+- Export: render at the TOP of the location popup's Lore pane, in a visually distinct boxed style (e.g. left gold rule + slightly inset parchment panel, italic serif) so it reads as boxed text, separate from regular lore.
+- Add to the `exportRegions` map inside `generatePlayerExport()`.
+
+**E. Traveler's Journal (player export) — ✅ DONE** — player agency, no DM involvement
+
+**F. Player-export Compendium (Lore Browser) — ✅ DONE** — a 📖 Compendium button in the export opens a full-screen two-pane reader (searchable location list + read-only reading pane: cover, kingdom/faction info, First Glimpse box, lore, rumours, NPC/building cards). Mirrors the editor's lore browser; reuses `renderMarkdown`/`resolveWikilink`. Wikilinks navigate within the browser.
+
+**G. Multiple simultaneous popups — ✅ DONE** — refactored the export's single reused `#popup` into a clone-from-`<template id="popup-tpl">` model. `showPopup()` clones a `.popup` node, `wirePopup()` gives each its own drag/expand/close + bring-to-front (z-index counter); map-click no longer closes popups; Esc closes the most recent. CSS popup IDs → classes.
+A personal notes box inside `world-map.html` that the PLAYER writes in, saved to THEIR browser only.
+- Export-only feature; stores to `localStorage` (namespaced per export, e.g. `journal:<worldName>`), never part of `state`/the DM's data, never re-imported.
+- A toggle in the export `#toolbar` opens a draggable/parchment panel (mirror the editor scratchpad pattern: header + textarea, persist value on input). Optional niceties later: timestamped entries, but a single free-text area is enough for v1.
+- Zero impact on the editor or exported data integrity.
+
+**Z. Multiple maps with linking — FINAL FEATURE (see "Multiple maps with linking" under High priority below for the architecture sketch).** Do not start until A–E are shipped and stable; it's the biggest architectural change (`state.maps[]`, per-pin `linkedMapId`, multi-page export navigation) and should be its own dedicated effort.
+
 ### High priority
 
 **1. Rumours system**
@@ -498,3 +588,75 @@ Write-Host "Braces: $o { $c } -> $(if($o-eq$c){'BALANCED'}else{"OFF $($o-$c)"})"
 - Author: `Arvi23` / `carpatirtg@yahoo.ro`
 - All commits co-authored by the assisting Claude model.
 - Use `gh release create vX.Y.Z editor.html` to publish releases with the file as a direct download asset.
+
+## ✅ Rumour Rework v2 (DONE — latest session)
+
+> Built and verified in an isolated harness: reveal gate omits hidden rumours from export; Known/Tracking/Finished render; player notes persist + Save/Load JSON round-trips. Implementation summary below; the original plan follows for reference.
+
+- **Part 1 — DM single export toggle:** removed the truth cycle (🟢/🔴/⚪) from both the edit-panel rumour cards and the Rumor Tracker rows. The 👁/🚫 `revealed` toggle is now the only per-rumour control (titles say "Exported to players" / "DM-only"). `isTrue` stays in the data model, just unsurfaced.
+- **Part 3 — player tracker:** statuses are now **Known / Tracking / Finished** (`.s-known/.s-tracking/.s-finished`; finished = strikethrough+dim). Every rumour row is expandable (chevron always shown) and holds a per-rumour **Notes** textarea (✎ flag when filled), auto-saved to `localStorage['dndmap_rumor_notes:+world']`, keyed by `rum.id`. DM `details` still show above the notes when present.
+- **Part 2 — portable notes:** **⤓ Save** downloads `{type:"dndmap-notes", worldName, statusMap, notesMap}` as `mynotes-<world>.json`; **⤒ Load** file-picks a backup and merges it in (imported entries win), then re-renders — so players keep their tracking across DM re-sends and across devices.
+
+---
+
+### Original plan (for reference)
+
+## 🔜 Rumour Rework v2 (PLANNED)
+
+Builds on the reveal-gate work already shipped (👁 per-rumour toggle; export filters to revealed only; statuses partly renamed). Three remaining pieces:
+
+### 1. Simplify the DM rumour control — drop the truth cycle, keep ONE export toggle
+- Today each rumour card/row has TWO controls: the truth cycle (🟢 true → 🔴 false → ⚪ unknown, `isTrue`) AND the new reveal toggle (👁/🚫, `revealed`).
+- **Change:** remove the truth toggle entirely. Keep a single toggle that just answers "will this rumour be exported to players?" — i.e. the existing `revealed` gate becomes the ONLY per-rumour switch.
+- Touch points: `renderRumoursList` (edit-panel cards, ~line 2820) and DM tracker `rowEl` (~line 3625) — delete the `tb` truth button + its handler; keep the reveal button. Consider relabeling it plainly (e.g. a checkbox "Export to players" or "Visible" pill) instead of an emoji eye for clarity.
+- `isTrue` can stay in the data model (harmless) but is no longer surfaced. `dmNote` stays (DM-only).
+- Migration already defaults `revealed=true` for existing rumours; leave that.
+
+### 2. Player notes persistence across map re-sends (the core pain)
+- **Problem:** every time the DM edits the map they re-export and re-send a fresh `world-map.html`. Player notes/status live in that file's `localStorage` keyed by `worldName` — a NEW file on the same origin keeps the same key, so notes *usually* survive… BUT if the player opens the new file from a different path/origin (downloads folder, email attachment, different device) the `localStorage` is separate and their notes are lost.
+- **Fix:** give players a portable notes store, independent of the HTML file:
+  - **Export my notes**: button in the player Rumor panel → downloads a small JSON ( `{worldName, statusMap, notesMap}` ) as e.g. `mynotes-<world>.json`.
+  - **Import my notes**: button → file picker → merges that JSON back into `localStorage`. Merge strategy: imported entries win; keep any local-only entries.
+  - Keep auto-save to `localStorage` as the default fast path; export/import is the durable backup for when the DM sends a new file or they switch device.
+  - Optional nicety: on load, if a matching `worldName` JSON was previously imported, offer "restore notes".
+
+### 3. Rework player note-taking (finish the half-built tracker)
+- Statuses → **Known / Tracking / Finished** (replace following/confirmed/debunked). s-tracking = accent left border; s-finished = strikethrough + dim; s-known = neutral/baseline.
+  - CSS: `.pr-row.s-following/.s-confirmed/.s-debunked` + the `.pr-row.s-debunked .pr-text` strikethrough rule → rename to `.s-known/.s-tracking/.s-finished`.
+  - rowEl status array (~line 4829): `[['known','Known'],['tracking','Tracking'],['finished','Finished']]`.
+- **Per-rumour Notes**: a textarea under each rumour (in the expandable body, alongside DM `details`). Make the chevron always expandable so notes are reachable even when a rumour has no `details`.
+  - Persist to `localStorage` key `dndmap_rumor_notes:<world>`, keyed by `rum.id`. Never touches the DM file.
+  - This `notesMap` is exactly what part 2's export/import should carry (together with `statusMap` from `dndmap_rumor_status:<world>`).
+
+### Build order when greenlit
+1, then 3 (statuses + notes), then 2 (export/import wrapping statusMap+notesMap). Verify in an isolated iframe only — NEVER write test data into the user's live preview/localStorage. Then update PLANS.md + README.md.
+
+## ✅ Click-reliability fix (DONE — latest session)
+
+> Root cause found: hovering any shape ran `hoveredId=id; renderSvg()`, rebuilding the WHOLE SVG — so the node under the cursor was destroyed mid-press. Browsers then re-fired enter/leave on the replacement (render thrash), and because polygons/roads/labels selected on the `click` event (which needs the same target for mousedown+mouseup), the swallowed click meant selection silently failed. Felt worst on big polygons; pins were OK because they select on mousedown.
+>
+> **Fixes:** (1) hover now applies glow/fill **directly** to the element — zero re-renders on hover (also a big perf win); (2) `onShapeMousedown` selects on press for ALL shapes (not just pins); (3) all shapes use the deferred-threshold drag, so a plain click never nudges a shape or spams undo, and only pins drag without Ctrl; (4) outline/border polygons got a 14px transparent `pointer-events:stroke` hit-band so the thin dashed line is easy to click. Render-time styling switched from `isSel||isHov` to `isSel` so a real render no longer depends on stale hover state. Verified: 0 renders on hover, polygon/border click-select reliable, click doesn't move the shape.
+
+---
+
+### Original investigation notes (kept for reference)
+
+## 🐞 Cross-browser interaction bug (notes)
+
+**Symptom:** the editor works great inside the in-app design preview, but in **Floorp** and **Edge** (standalone browsers) it's clunky — many elements can't be clicked reliably. User currently prefers the in-app left-sidebar preview because of this.
+
+**Likely causes to investigate (editor.html):**
+- SVG hit-targets: many shapes use thin strokes / transparent fills for hit detection. `pointer-events` defaults differ — verify every clickable SVG node sets explicit `pointer-events` (e.g. transparent fills need `pointer-events:all`; `fill:none` paths only catch on the stroke). Roads already use a fat transparent hit-line; check pins/polygon vertices/labels behave the same in Firefox-family (Floorp) which is stricter about `pointer-events` on zero-opacity nodes.
+- Event model: code may rely on `mousedown`/`mousemove`/`mouseup` + `e.button`/`e.ctrlKey`. Mixing with the newer pointer events used in the party-marker drag can behave differently across engines. Consider unifying on **pointer events** (`pointerdown/move/up` + `setPointerCapture`) for all drags so capture works consistently in Floorp/Edge.
+- Overlapping transparent layers stealing clicks: the SVG overlay, drag-preview layer, and label nodes may sit above intended targets. Audit z-order / `pointer-events:none` on non-interactive overlays.
+- Drag threshold + `getScreenCTM()`/coordinate math: confirm coordinate transforms are correct when the page is scrolled/zoomed in a real browser window (the in-app preview may differ in sizing).
+- Touch/zoom handlers (`pdist`, pinch) attaching passive/non-passive listeners differently.
+
+**Approach when greenlit:** reproduce in Firefox + Chromium engines, add a small interaction test checklist (select pin, drag pin, drag label, click road, vertex insert/drag, open popups), then fix `pointer-events` + unify on pointer events. Verify in an isolated iframe AND ask the user to sanity-check in Floorp/Edge.
+
+
+## ✅ Player location-notes + unified Save/Load (DONE — latest session)
+
+- **Per-location player notes:** every export popup with an `r.id` (pins, polygons, roads — not the party marker) now has a **✎ Your notes** textarea, auto-saved to `localStorage['dndmap_loc_notes:'+world]` keyed by region id (re-reads on each input to avoid cross-popup clobber).
+- **Unified player export:** `collectPlayerData()` / `downloadPlayerData()` / `importPlayerData()` bundle ALL player-authored state — journal (`dndmap_journal`), rumour statuses (`dndmap_rumor_status`), rumour notes (`dndmap_rumor_notes`), and location notes (`dndmap_loc_notes`) — into one `{type:'dndmap-notes', worldName, journal, statusMap, notesMap, locNotes}` file. Toolbar **⤓ Save Notes / ⤒ Load Notes** buttons drive it; the Rumor panel’s Save/Load were repointed to the same functions. Import merges (imported entries win; journal is appended with a `---` divider) then `location.reload()`s to refresh every view.
+- **⚠️ Bug caught in verification:** the journal separator was written as `'\n\n---\n\n'` *inside the export template literal*, so `\n` collapsed to real newlines in the generated player script → unterminated string literal → the **entire** player export silently failed to run. Fixed by using `String.fromCharCode(10,10)`. Lesson: never put bare `\n`/`\t` escapes in string literals that live inside the export template literal — use `String.fromCharCode` or double-escape.
